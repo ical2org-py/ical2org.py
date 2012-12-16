@@ -2,68 +2,33 @@
 
 import sys
 from datetime import date, datetime, timedelta, tzinfo
-from icalendar import Calendar, Event
+from icalendar import Calendar
+from pytz import timezone
+
+# Change here your local timezone
+LOCAL_TZ = timezone("Europe/Paris")
 
 REC_DELTAS = { 'YEARLY' : 365,
                'WEEKLY' :  7,
                'DAILY'  :  1 }
 
-# This tzinfo classes are taken from python documentation
-# A class capturing the platform's idea of local time.
-
-import time as _time
-
-STDOFFSET = timedelta(seconds = -_time.timezone)
-if _time.daylight:
-    DSTOFFSET = timedelta(seconds = -_time.altzone)
-else:
-    DSTOFFSET = STDOFFSET
-
-DSTDIFF = DSTOFFSET - STDOFFSET
-
-class Local_tz(tzinfo):
-
-    def utcoffset(self, dt):
-        if self._isdst(dt):
-            return DSTOFFSET
-        else:
-            return STDOFFSET
-
-    def dst(self, dt):
-        if self._isdst(dt):
-            return DSTDIFF
-        else:
-            return timedelta(0)
-
-    def tzname(self, dt):
-        return _time.tzname[self._isdst(dt)]
-
-    def _isdst(self, dt):
-        tt = (dt.year, dt.month, dt.day,
-              dt.hour, dt.minute, dt.second,
-              dt.weekday(), 0, 0)
-        stamp = _time.mktime(tt)
-        tt = _time.localtime(stamp)
-        return tt.tm_isdst > 0
-
-local_tz = Local_tz()
-
-def canonical_date(d):
-    '''Given a date or a datetime, return a canonical date
-       . first, convert the datetime to local time
-       . then, remove timezone
-    '''
-    # d can be date or datetime
-    try:
-        new_dt = d.astimezone(local_tz)
-        return new_dt.replace(tzinfo = None)
-    except AttributeError:
+def get_datetime(dt):
+    '''Given a datetime, return it. If argument is date, convert it to a local datetime'''
+    if isinstance(dt, datetime):
+        return dt
+    else:
         # d is date. Being a naive date, let's suppose it is in local timezone.
-        return  datetime(year = d.year, month = d.month, day = d.day)
+        return  datetime(year = dt.year, month = dt.month, day = dt.day, tzinfo = LOCAL_TZ)
 
 def orgDate(dt):
-    '''given a datetime in UTC, return YYYY-MM-DD DayofWeek HH:MM'''
-    return dt.strftime("<%Y-%m-%d %a %H:%M>")
+    '''given a datetime return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
+    return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a %H:%M>")
+
+def add_delta_dst(dt, delta):
+    '''Add a timedelta to a datetime, adjusting DST when appropriate'''
+    # convert datetime to naive, add delta and convert again to specified timezone
+    utc_dt = dt.replace(tzinfo = None)
+    return dt.tzinfo.localize(utc_dt + delta)
 
 def recurring_events(event_start, event_end, delta_str, interval_start, interval_end):
 
@@ -73,9 +38,9 @@ def recurring_events(event_start, event_end, delta_str, interval_start, interval
     delta = timedelta(days = delta_days)
     if event_start < interval_start:
         delta_ord = (interval_start.toordinal() - event_start.toordinal()) / delta_days
-        date_aux = event_start + timedelta(days = delta_days * int(delta_ord))
+        date_aux = add_delta_dst(event_start, timedelta(days = delta_days * int(delta_ord)))
         while date_aux < interval_start:
-            date_aux += delta
+            date_aux = add_delta_dst(date_aux, delta)
     else :
         date_aux = event_start
 
@@ -85,44 +50,46 @@ def recurring_events(event_start, event_end, delta_str, interval_start, interval
         end = event_end
     while date_aux < end:
         result.append( (date_aux, date_aux + event_duration, 1) )
-        date_aux += delta
+        date_aux = add_delta_dst(date_aux, delta)
     return result
 
-def inBetween(comp, start, end):
-    '''Check whether VEVENT component lies between start and end'''
+def eventsBetween(comp, start, end):
+    '''Check whether VEVENT component lies between start and end, and, if
+    so, return it. If recurring event, return all apropriate events, i.e.,
+    those which fall within the interval.'''
     if comp.name != 'VEVENT': return []
-    event_start=canonical_date(comp['DTSTART'].dt)
-    event_end=canonical_date(comp['DTEND'].dt)
+    event_start=get_datetime(comp['DTSTART'].dt)
+    event_end=get_datetime(comp['DTEND'].dt)
     if 'RRULE' in comp:
         if 'UNTIL' in comp['RRULE']:
-            event_until = canonical_date(comp['RRULE']['UNTIL'][0])
+            event_until = get_datetime(comp['RRULE']['UNTIL'][0])
         else :
             event_until = end
         if event_until < start: return []
-        event_until = max (event_until, end)
+        event_until = max(event_until, end)
         return recurring_events(event_start, event_end, comp['RRULE']['FREQ'][0], start, event_until)
+    # Single event
     if event_start > end: return []
     if event_end < start: return []
     return [ (event_start, event_end, 0) ]
+
+# main function here
 
 if len(sys.argv) < 2:
     sys.exit('Usage: {0} file.ics'.format(sys.argv[0]))
     sys.exit(1)
 
 progname, ifname = sys.argv
-
 cal = Calendar.from_ical(open(ifname,'rb').read())
-#cal = Calendar.from_ical(open('kk.ics','rb').read())
-# cal = Calendar.from_ical(open('basic.ics','rb').read())
 
-now = canonical_date(datetime.now(local_tz))
+now = datetime.now(LOCAL_TZ)
 start = now - timedelta( days = +30)
 end = now + timedelta( days = +30)
 for comp in cal.walk():
-    for comp_start, comp_end, rec_event in inBetween(comp, start, end):
+    for comp_start, comp_end, rec_event in eventsBetween(comp, start, end):
         print("* {}".format(comp['SUMMARY'].to_ical())),
         if rec_event:
             print(" :RECURRING:")
         else:
             print("")
-        print("{}--{}".format(orgDate(comp_start), orgDate(comp_end)))
+        print("  {}--{}".format(orgDate(comp_start), orgDate(comp_end)))
