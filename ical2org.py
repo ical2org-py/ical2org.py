@@ -3,10 +3,16 @@
 import sys
 from datetime import date, datetime, timedelta, tzinfo
 from icalendar import Calendar
-from pytz import timezone
+from pytz import timezone, utc
 
 # Change here your local timezone
 LOCAL_TZ = timezone("Europe/Paris")
+# Window lenght in days (left & right from current time). Has to be possitive.
+WINDOW = 90
+# leave empty if you don't want to attach any tag to recurring events
+RECUR_TAG = ":RECURRING:"
+
+# Do not change anything below
 
 REC_DELTAS = { 'YEARLY' : 365,
                'WEEKLY' :  7,
@@ -17,18 +23,22 @@ def get_datetime(dt):
     if isinstance(dt, datetime):
         return dt
     else:
-        # d is date. Being a naive date, let's suppose it is in local timezone.
-        return  datetime(year = dt.year, month = dt.month, day = dt.day, tzinfo = LOCAL_TZ)
+        # d is date. Being a naive date, let's suppose it is in local
+        # timezone.  Unfortunately using the tzinfo argument of the standard
+        # datetime constructors ''does not work'' with pytz for many
+        # timezones, so create first a utc datetime, and convert to local timezone
+        aux_dt = datetime(year = dt.year, month = dt.month, day = dt.day, tzinfo = utc)
+        return aux_dt.astimezone(LOCAL_TZ)
 
 def orgDate(dt):
-    '''given a datetime return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
+    '''Given a datetime return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
     return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a %H:%M>")
 
 def add_delta_dst(dt, delta):
     '''Add a timedelta to a datetime, adjusting DST when appropriate'''
     # convert datetime to naive, add delta and convert again to specified timezone
-    utc_dt = dt.replace(tzinfo = None)
-    return dt.tzinfo.localize(utc_dt + delta)
+    naive_dt = dt.replace(tzinfo = None)
+    return dt.tzinfo.localize(naive_dt + delta)
 
 def recurring_events(event_start, event_end, delta_str, interval_start, interval_end):
 
@@ -83,13 +93,13 @@ progname, ifname = sys.argv
 cal = Calendar.from_ical(open(ifname,'rb').read())
 
 now = datetime.now(LOCAL_TZ)
-start = now - timedelta( days = +30)
-end = now + timedelta( days = +30)
+start = now - timedelta( days = WINDOW)
+end = now + timedelta( days = WINDOW)
 for comp in cal.walk():
     for comp_start, comp_end, rec_event in eventsBetween(comp, start, end):
         print("* {}".format(comp['SUMMARY'].to_ical())),
-        if rec_event:
-            print(" :RECURRING:")
+        if rec_event and len(RECUR_TAG):
+            print(" {}".format(RECUR_TAG))
         else:
             print("")
         print("  {}--{}".format(orgDate(comp_start), orgDate(comp_end)))
