@@ -54,12 +54,8 @@ def recurring_events(event_start, event_end, delta_str, interval_start, interval
     else :
         date_aux = event_start
 
-    delta = timedelta(days = delta_days)
-    end = interval_end
-    if event_end > interval_start and event_end < interval_end:
-        end = event_end
-    while date_aux < end:
-        result.append( (date_aux, date_aux + event_duration, 1) )
+    while date_aux < interval_end:
+        result.append( (date_aux, date_aux.tzinfo.normalize(date_aux + event_duration), 1) )
         date_aux = add_delta_dst(date_aux, delta)
     return result
 
@@ -92,9 +88,9 @@ if len(sys.argv) < 2:
 progname, ifname = sys.argv
 cal = Calendar.from_ical(open(ifname,'rb').read())
 
-now = datetime.now(LOCAL_TZ)
-start = now - timedelta( days = WINDOW)
-end = now + timedelta( days = WINDOW)
+now = datetime.now(utc).astimezone(LOCAL_TZ)
+start = LOCAL_TZ.normalize(now - timedelta( days = WINDOW))
+end = LOCAL_TZ.normalize(now + timedelta( days = WINDOW))
 for comp in cal.walk():
     for comp_start, comp_end, rec_event in eventsBetween(comp, start, end):
         print("* {}".format(comp['SUMMARY'].to_ical())),
