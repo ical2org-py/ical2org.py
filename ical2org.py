@@ -31,35 +31,36 @@ def get_datetime(dt):
         return aux_dt.astimezone(LOCAL_TZ)
 
 def orgDate(dt):
-    '''Given a datetime return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
+    '''Given a datetime in his own timezone, return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
     return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a %H:%M>")
 
 def add_delta_dst(dt, delta):
     '''Add a timedelta to a datetime, adjusting DST when appropriate'''
-    # convert datetime to naive, add delta and convert again to specified timezone
+    # convert datetime to naive, add delta and convert again to his own timezone
     naive_dt = dt.replace(tzinfo = None)
     return dt.tzinfo.localize(naive_dt + delta)
 
-def recurring_events(event_start, event_end, delta_str, interval_start, interval_end):
-
+def recurring_events(event_start, event_end, delta_str, start_utc, end_utc):
+    # event_start, event_end is in his own timezone
+    # start_utc, end_utc is in utc
     result = []
     event_duration = event_end - event_start
     delta_days = REC_DELTAS[delta_str]
     delta = timedelta(days = delta_days)
-    if event_start < interval_start:
-        delta_ord = (interval_start.toordinal() - event_start.toordinal()) / delta_days
-        date_aux = add_delta_dst(event_start, timedelta(days = delta_days * int(delta_ord)))
-        while date_aux < interval_start:
-            date_aux = add_delta_dst(date_aux, delta)
+    if event_start < start_utc:
+        delta_ord = (start_utc.toordinal() - event_start.toordinal()) / delta_days
+        event_aux = add_delta_dst(event_start, timedelta(days = delta_days * int(delta_ord)))
+        while event_aux < start_utc:
+            event_aux = add_delta_dst(event_aux, delta)
     else :
-        date_aux = event_start
+        event_aux = event_start
 
-    while date_aux < interval_end:
-        result.append( (date_aux, date_aux.tzinfo.normalize(date_aux + event_duration), 1) )
-        date_aux = add_delta_dst(date_aux, delta)
+    while event_aux < end_utc:
+        result.append( (event_aux, event_aux.tzinfo.normalize(event_aux + event_duration), 1) )
+        event_aux = add_delta_dst(event_aux, delta)
     return result
 
-def eventsBetween(comp, start, end):
+def eventsBetween(comp, start_utc, end_utc):
     '''Check whether VEVENT component lies between start and end, and, if
     so, return it. If recurring event, return all apropriate events, i.e.,
     those which fall within the interval.'''
@@ -68,15 +69,15 @@ def eventsBetween(comp, start, end):
     event_end=get_datetime(comp['DTEND'].dt)
     if 'RRULE' in comp:
         if 'UNTIL' in comp['RRULE']:
-            event_until = get_datetime(comp['RRULE']['UNTIL'][0])
+            event_until = get_datetime(comp['RRULE']['UNTIL'][0]).astimezone(utc)
         else :
-            event_until = end
-        if event_until < start: return []
-        event_until = max(event_until, end)
-        return recurring_events(event_start, event_end, comp['RRULE']['FREQ'][0], start, event_until)
+            event_until = end_utc
+        if event_until < start_utc: return []
+        event_until = max(event_until, end_utc)
+        return recurring_events(event_start, event_end, comp['RRULE']['FREQ'][0], start_utc, event_until)
     # Single event
-    if event_start > end: return []
-    if event_end < start: return []
+    if event_start > end_utc: return []
+    if event_end < start_utc: return []
     return [ (event_start, event_end, 0) ]
 
 # main function here
@@ -88,9 +89,9 @@ if len(sys.argv) < 2:
 progname, ifname = sys.argv
 cal = Calendar.from_ical(open(ifname,'rb').read())
 
-now = datetime.now(utc).astimezone(LOCAL_TZ)
-start = LOCAL_TZ.normalize(now - timedelta( days = WINDOW))
-end = LOCAL_TZ.normalize(now + timedelta( days = WINDOW))
+now = datetime.now(utc)
+start = now - timedelta( days = WINDOW)
+end = now + timedelta( days = WINDOW)
 for comp in cal.walk():
     for comp_start, comp_end, rec_event in eventsBetween(comp, start, end):
         print("* {}".format(comp['SUMMARY'].to_ical())),
