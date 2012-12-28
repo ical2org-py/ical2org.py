@@ -44,6 +44,8 @@ def recurring_events(event_start, event_end, delta_str, start_utc, end_utc):
     # event_start, event_end is in his own timezone
     # start_utc, end_utc is in utc
     result = []
+    if delta_str not in REC_DELTAS:
+        return []
     event_duration = event_end - event_start
     delta_days = REC_DELTAS[delta_str]
     delta = timedelta(days = delta_days)
