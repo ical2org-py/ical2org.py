@@ -41,8 +41,8 @@ def add_delta_dst(dt, delta):
     return dt.tzinfo.localize(naive_dt + delta)
 
 def recurring_events(event_start, event_end, delta_str, start_utc, end_utc):
-    # event_start, event_end is in his own timezone
-    # start_utc, end_utc is in utc
+    # event_start, event_end specified using its own timezone
+    # start_utc, end_utc specified using UTC
     result = []
     if delta_str not in REC_DELTAS:
         return []
@@ -95,10 +95,16 @@ now = datetime.now(utc)
 start = now - timedelta( days = WINDOW)
 end = now + timedelta( days = WINDOW)
 for comp in cal.walk():
-    for comp_start, comp_end, rec_event in eventsBetween(comp, start, end):
-        print("* {}".format(comp['SUMMARY'].to_ical())),
-        if rec_event and len(RECUR_TAG):
-            print(" {}".format(RECUR_TAG))
-        else:
-            print("")
-        print("  {}--{}".format(orgDate(comp_start), orgDate(comp_end)))
+    try:
+        for comp_start, comp_end, rec_event in eventsBetween(comp, start, end):
+            if 'SUMMARY' in comp:
+                print("* {}".format(comp['SUMMARY'].to_ical())),
+            else:
+                print("* (no title)"),
+            if rec_event and len(RECUR_TAG):
+                print(" {}".format(RECUR_TAG))
+            else:
+                print("")
+            print("  {}--{}".format(orgDate(comp_start), orgDate(comp_end)))
+    except:
+        pass
