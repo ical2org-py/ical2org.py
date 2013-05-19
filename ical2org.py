@@ -14,8 +14,7 @@ RECUR_TAG = ":RECURRING:"
 
 # Do not change anything below
 
-REC_DELTAS = { 'YEARLY' : 365,
-               'WEEKLY' :  7,
+REC_DELTAS = { 'WEEKLY' :  7,
                'DAILY'  :  1 }
 
 def get_datetime(dt):
@@ -40,9 +39,16 @@ def add_delta_dst(dt, delta):
     naive_dt = dt.replace(tzinfo = None)
     return dt.tzinfo.localize(naive_dt + delta)
 
-def recurring_events(event_start, event_end, delta_str, start_utc, end_utc):
-    # event_start, event_end specified using its own timezone
-    # start_utc, end_utc specified using UTC
+def recurring_event_years(event_start, event_end, start_utc, end_utc):
+    result = []
+    event_duration = event_end - event_start
+    for frame_year in range(start_utc.year, end_utc.year + 1):
+        event_aux = event_start.replace(year=frame_year)
+        if event_aux > start_utc and event_aux < end_utc:
+            result.append( (event_aux, event_aux.tzinfo.normalize(event_aux + event_duration), 1) )
+    return result
+
+def recurring_event_days(event_start, event_end, delta_str, start_utc, end_utc):
     result = []
     if delta_str not in REC_DELTAS:
         return []
@@ -61,6 +67,13 @@ def recurring_events(event_start, event_end, delta_str, start_utc, end_utc):
         result.append( (event_aux, event_aux.tzinfo.normalize(event_aux + event_duration), 1) )
         event_aux = add_delta_dst(event_aux, delta)
     return result
+
+def recurring_events(event_start, event_end, delta_str, start_utc, end_utc):
+    # event_start, event_end specified using its own timezone
+    # start_utc, end_utc specified using UTC
+    if delta_str == 'YEARLY':
+        return recurring_event_years(event_start, event_end, start_utc, end_utc)
+    return recurring_event_days(event_start, event_end, delta_str, start_utc, end_utc)
 
 def eventsBetween(comp, start_utc, end_utc):
     '''Check whether VEVENT component lies between start and end, and, if
