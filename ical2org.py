@@ -97,12 +97,14 @@ def eventsBetween(comp, start_utc, end_utc):
 
 # main function here
 
-if len(sys.argv) < 2:
-    sys.exit('Usage: {0} file.ics'.format(sys.argv[0]))
-    sys.exit(1)
+# main function here
 
-progname, ifname = sys.argv
-cal = Calendar.from_ical(open(ifname,'rb').read())
+if len(sys.argv) < 2:
+    fh = sys.stdin
+else:
+    fh = open(sys.argv[1],'rb')
+
+cal = Calendar.from_ical(fh.read())
 
 now = datetime.now(utc)
 start = now - timedelta( days = WINDOW)
