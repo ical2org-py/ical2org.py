@@ -21,6 +21,25 @@ ical2org.py is a python script and it needs the following libraries:
 - icalendar
 - pytz
 
+You can install those packages as follows (thanks to Guido Van Hoecke):
+
+Get iCalendar from https://pypi.python.org/pypi/icalendar, untar it
+and run 
+
+````shell
+sudo python setup.py install
+````
+
+Get pytz from https://pypi.python.org/pypi/pytz/. It comes as an egg
+file so you just run 
+
+````shell
+sudo easy-install pytz-2013b-py2.7.egg
+````
+
+Customize the script
+====================
+
 You should edit the script and modify the lines at the beginning in order to
 specify your local timezone (line 9) and the window of the time-frame, in
 days (the time-frame is relative to the current time). You can also modify
