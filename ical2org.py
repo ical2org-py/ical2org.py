@@ -121,5 +121,7 @@ for comp in cal.walk():
             else:
                 print("")
             print("  {}--{}".format(orgDate(comp_start), orgDate(comp_end)))
+            if 'DESCRIPTION' in comp:
+                print("{}".format(comp['DESCRIPTION'].to_ical()))
     except:
         pass
