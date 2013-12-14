@@ -88,7 +88,7 @@ def eventsBetween(comp, start_utc, end_utc):
         else :
             event_until = end_utc
         if event_until < start_utc: return []
-        event_until = max(event_until, end_utc)
+        event_until = min(event_until, end_utc)
         return recurring_events(event_start, event_end, comp['RRULE']['FREQ'][0], start_utc, event_until)
     # Single event
     if event_start > end_utc: return []
