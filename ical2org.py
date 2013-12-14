@@ -63,7 +63,7 @@ def recurring_event_days(event_start, event_end, delta_str, start_utc, end_utc):
     else :
         event_aux = event_start
 
-    while event_aux < end_utc:
+    while event_aux <= end_utc:
         result.append( (event_aux, event_aux.tzinfo.normalize(event_aux + event_duration), 1) )
         event_aux = add_delta_dst(event_aux, delta)
     return result
