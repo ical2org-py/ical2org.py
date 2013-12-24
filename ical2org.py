@@ -88,16 +88,16 @@ class EventRecurDaysIter:
         self.ev_start = get_datetime(comp['DTSTART'].dt)
         self.ev_end = get_datetime(comp['DTEND'].dt)
         self.duration = self.ev_end - self.ev_start
-        is_count = False
+        self.is_count = False
         if 'COUNT' in comp['RRULE']:
-            is_count = True
+            self.is_count = True
             self.count = comp['RRULE']['COUNT'][0]
         delta_days = days
         if 'INTERVAL' in comp['RRULE']:
             delta_days *= comp['RRULE']['INTERVAL'][0]
         self.delta = timedelta(delta_days)
         if 'UNTIL' in comp['RRULE']:
-            if is_count:
+            if self.is_count:
                 raise "UNTIL and COUNT MUST NOT occur in the same 'recur'"
             self.until_utc = get_datetime(comp['RRULE']['UNTIL'][0]).astimezone(utc)
         else :
