@@ -109,8 +109,8 @@ class EventRecurDaysIter:
         if self.ev_start < timeframe_start:
             # advance to timeframe start
             (self.current, counts) = advance_just_before(self.ev_start, timeframe_start, delta_days)
-            if self.count:
-                self.cont -= counts
+            if self.is_count:
+                self.count -= counts
                 if self.count <= 0:
                     self.current = self.until_utc + self.delta # Default value for no iteration
                     return
