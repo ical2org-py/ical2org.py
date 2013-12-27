@@ -52,8 +52,8 @@ def generate_event_iterator(comp, timeframe_start, timeframe_end):
     if comp.name != 'VEVENT': return []
     if 'RRULE' in comp:
         return {
-            'WEEKLY' : EventRecurWeeklyIter(comp, timeframe_start, timeframe_end),
-            'DAILY' : EventRecurDailyIter(comp, timeframe_start, timeframe_end),
+            'WEEKLY' : EventRecurDaysIter(7, comp, timeframe_start, timeframe_end),
+            'DAILY' : EventRecurDaysIter(1, comp, timeframe_start, timeframe_end),
             'MONTHLY' : [],
             'YEARLY' : EventRecurYearlyIter(comp, timeframe_start, timeframe_end)
             }[ comp['RRULE']['FREQ'][0] ]
@@ -111,9 +111,7 @@ class EventRecurDaysIter:
             (self.current, counts) = advance_just_before(self.ev_start, timeframe_start, delta_days)
             if self.is_count:
                 self.count -= counts
-                if self.count <= 0:
-                    self.current = self.until_utc + self.delta # Default value for no iteration
-                    return
+                if self.count < 1: return
             while self.current < timeframe_start:
                 self.current = add_delta_dst(self.current, self.delta)
         else:
@@ -130,7 +128,7 @@ class EventRecurDaysIter:
         return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
     def next_count(self):
-        if self.count == 0:
+        if self.count < 1:
            raise StopIteration
         self.count -= 1
         event_aux = self.current
@@ -140,26 +138,6 @@ class EventRecurDaysIter:
     def next(self):
         if self.is_count: return self.next_count()
         return self.next_until()
-
-class EventRecurDailyIter:
-    def __init__(self, comp, timeframe_start, timeframe_end):
-        self.m_iter = EventRecurDaysIter(1, comp, timeframe_start, timeframe_end)
-
-    def __iter__(self):
-        return self.m_iter.__iter__()
-
-    def next(self):
-        return self.m_iter.next()
-
-class EventRecurWeeklyIter:
-    def __init__(self, comp, timeframe_start, timeframe_end):
-        self.m_iter = EventRecurDaysIter(7, comp, timeframe_start, timeframe_end)
-
-    def __iter__(self):
-        return self.m_iter.__iter__()
-
-    def next(self):
-        return self.m_iter.next()
 
 class EventRecurMonthlyIter:
     pass
