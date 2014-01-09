@@ -8,7 +8,7 @@ from pytz import timezone, utc
 
 # Change here your local timezone
 LOCAL_TZ = timezone("Europe/Paris")
-# Window lenght in days (left & right from current time). Has to be possitive.
+# Window length in days (left & right from current time). Has to be positive.
 WINDOW = 90
 # leave empty if you don't want to attach any tag to recurring events
 RECUR_TAG = ":RECURRING:"
