@@ -192,6 +192,11 @@ if len(sys.argv) < 2:
     fh = sys.stdin
 else:
     fh = open(sys.argv[1],'rb')
+    
+if len(sys.argv) > 2:
+    fh_w = open(sys.argv[2],'wb')
+else:
+    fh_w = sys.stdout
 
 if len(sys.argv) > 2:
     fh_w = open(sys.argv[2],'wb')
