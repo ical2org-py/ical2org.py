@@ -198,6 +198,11 @@ if len(sys.argv) > 2:
 else:
     fh_w = sys.stdout
 
+if len(sys.argv) > 2:
+    fh_w = open(sys.argv[2],'wb')
+else:
+    fh_w = sys.stdout
+
 cal = Calendar.from_ical(fh.read())
 
 now = datetime.now(utc)
@@ -208,15 +213,18 @@ for comp in cal.walk():
         event_iter = generate_event_iterator(comp, start, end)
         for comp_start, comp_end, rec_event in event_iter:
             if 'SUMMARY' in comp:
-                fh_w.write("* {}\n".format(comp['SUMMARY'].to_ical())),
+                fh_w.write("* {}".format(comp['SUMMARY'].to_ical())),
             else:
-                fh_w.write("* (no title)\n"),
+                fh_w.write("* (no title)"),
             if rec_event and len(RECUR_TAG):
                 fh_w.write(" {}\n".format(RECUR_TAG))
-            else:
-                fh_w.write("\n")
+            fh_w.write("\n")
             fh_w.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end)))
             if 'DESCRIPTION' in comp:
-                fh_w.write("{}\n".format(comp['DESCRIPTION'].to_ical()))
+                DESCRIPTION = '\n'.join(comp['DESCRIPTION'].to_ical().split('\\n'))
+                DESCRIPTION = DESCRIPTION.replace('\\,', ',')
+                fh_w.write("{}\n".format(DESCRIPTION))
+
+            fh_w.write("\n")
     except:
         pass
