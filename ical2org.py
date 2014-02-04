@@ -8,8 +8,9 @@ from pytz import timezone, utc
 
 # Change here your local timezone
 LOCAL_TZ = timezone("Europe/Paris")
-# Window lenght in days (left & right from current time). Has to be possitive.
-WINDOW = 90
+# Window length in days (left & right from current time). Has to be positive.
+LEFT_WINDOW = 30 # into the past
+RIGHT_WINDOW = 90 # into the future
 # leave empty if you don't want to attach any tag to recurring events
 RECUR_TAG = ":RECURRING:"
 
@@ -201,8 +202,8 @@ else:
 cal = Calendar.from_ical(fh.read())
 
 now = datetime.now(utc)
-start = now - timedelta( days = WINDOW)
-end = now + timedelta( days = WINDOW)
+start = now - timedelta( days = LEFT_WINDOW)
+end = now + timedelta( days = RIGHT_WINDOW)
 for comp in cal.walk():
     try:
         event_iter = generate_event_iterator(comp, start, end)
