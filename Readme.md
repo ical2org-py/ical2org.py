@@ -1,4 +1,3 @@
-
 ical2org.py
 ===========
 
@@ -34,7 +33,7 @@ Get pytz from https://pypi.python.org/pypi/pytz/. It comes as an egg
 file so you just run 
 
 ````shell
-sudo easy-install pytz-2013b-py2.7.egg
+sudo easy_install pytz-2013b-py2.7.egg
 ````
 
 Customize the script
