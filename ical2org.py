@@ -76,10 +76,10 @@ class EventSingleIter:
     # Iterate just once
     def next(self):
         if self.result:
-          aux = self.result
-          self.result = ()
+            aux = self.result
+            self.result = ()
         else:
-           raise StopIteration
+            raise StopIteration
         return aux
 
 class EventRecurDaysIter:
@@ -122,14 +122,14 @@ class EventRecurDaysIter:
 
     def next_until(self):
         if self.current > self.until_utc:
-           raise StopIteration
+            raise StopIteration
         event_aux = self.current
         self.current = add_delta_dst(self.current, self.delta)
         return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
     def next_count(self):
         if self.count < 1:
-           raise StopIteration
+            raise StopIteration
         self.count -= 1
         event_aux = self.current
         self.current = add_delta_dst(self.current, self.delta)
