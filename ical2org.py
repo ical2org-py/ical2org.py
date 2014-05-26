@@ -212,10 +212,13 @@ for comp in cal.walk():
     try:
         event_iter = generate_event_iterator(comp, start, end)
         for comp_start, comp_end, rec_event in event_iter:
-            if 'SUMMARY' in comp:
-                fh_w.write("* {}".format(comp['SUMMARY'].to_ical())),
-            else:
-                fh_w.write("* (no title)"),
+            SUMMARY = ""
+            if "SUMMARY" in comp:
+                SUMMARY = comp['SUMMARY'].to_ical()
+                SUMMARY = SUMMARY.replace('\\,', ',')
+            if not len(SUMMARY):
+                SUMMARY = "(No title)"
+            fh_w.write("* {}".format(SUMMARY))
             if rec_event and len(RECUR_TAG):
                 fh_w.write(" {}\n".format(RECUR_TAG))
             fh_w.write("\n")
