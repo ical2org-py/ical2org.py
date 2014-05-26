@@ -198,11 +198,6 @@ if len(sys.argv) > 2:
 else:
     fh_w = sys.stdout
 
-if len(sys.argv) > 2:
-    fh_w = open(sys.argv[2],'wb')
-else:
-    fh_w = sys.stdout
-
 cal = Calendar.from_ical(fh.read())
 
 now = datetime.now(utc)
