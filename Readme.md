@@ -22,8 +22,8 @@ ical2org.py is a python script and it needs the following libraries:
 
 You can install those packages as follows (thanks to Guido Van Hoecke):
 
-Get iCalendar from https://pypi.python.org/pypi/icalendar, untar it
-and run 
+Get iCalendar from https://pypi.python.org/pypi/icalendar, untar it and run
+(you probably will also need the "python-setuptools" package)
 
 ````shell
 sudo python setup.py install
