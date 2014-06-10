@@ -15,14 +15,21 @@ RECUR_TAG = ":RECURRING:"
 
 # Do not change anything below
 
-def orgDate(dt):
+def orgDatetime(dt):
     '''Given a datetime in his own timezone, return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
     return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a %H:%M>")
+
+def orgDate(dt):
+    '''Given a date in his own timezone, return YYYY-MM-DD DayofWeek in local timezone'''
+    return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a>")
 
 def get_datetime(dt):
     '''Given a datetime, return it. If argument is date, convert it to a local datetime'''
     if isinstance(dt, datetime):
         return dt
+    if isinstance(dt, date):
+        # all day event; just return the date
+        return datetime(year=dt.year, month=dt.month, day=dt.day, tzinfo=LOCAL_TZ)
     else:
         # d is date. Being a naive date, let's suppose it is in local
         # timezone.  Unfortunately using the tzinfo argument of the standard
@@ -217,7 +224,10 @@ for comp in cal.walk():
             if rec_event and len(RECUR_TAG):
                 fh_w.write(" {}\n".format(RECUR_TAG))
             fh_w.write("\n")
-            fh_w.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end)))
+            if isinstance(comp["DTSTAMP"].dt, date):  # all day event
+                fh_w.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end - timedelta(days=1))))
+            else:
+                fh_w.write("  {}--{}\n".format(orgDatetime(comp_start), orgDatetime(comp_end)))
             if 'DESCRIPTION' in comp:
                 DESCRIPTION = '\n'.join(comp['DESCRIPTION'].to_ical().split('\\n'))
                 DESCRIPTION = DESCRIPTION.replace('\\,', ',')
