@@ -1,5 +1,6 @@
 #!/usr/bin/python2.7
 
+from __future__ import print_function
 import sys
 from math import floor
 from datetime import date, datetime, timedelta, tzinfo
@@ -198,7 +199,12 @@ if len(sys.argv) > 2:
 else:
     fh_w = sys.stdout
 
-cal = Calendar.from_ical(fh.read())
+try:
+    cal = Calendar.from_ical(fh.read())
+except:
+    print("ERROR parsing ical file", file=sys.stderr)
+    exit(1)
+    pass
 
 now = datetime.now(utc)
 start = now - timedelta( days = WINDOW)
@@ -226,3 +232,4 @@ for comp in cal.walk():
             fh_w.write("\n")
     except:
         pass
+exit(0);
