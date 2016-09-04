@@ -69,7 +69,14 @@ class EventSingleIter:
     '''Iterator for non-recurring single events.'''
     def __init__(self, comp, timeframe_start, timeframe_end):
         self.ev_start = get_datetime(comp['DTSTART'].dt)
-        self.ev_end = get_datetime(comp['DTEND'].dt)
+
+        # Events with the same begin/end time same do not include
+        # "DTEND".
+        if "DTEND" not in comp:
+            self.ev_end = self.ev_start
+        else:
+            self.ev_end = get_datetime(comp['DTEND'].dt)
+
         self.duration = self.ev_end - self.ev_start
         self.result = ()
         if (self.ev_start < timeframe_end and self.ev_end > timeframe_start):
