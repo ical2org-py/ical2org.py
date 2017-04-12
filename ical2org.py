@@ -7,8 +7,13 @@ from datetime import date, datetime, timedelta, tzinfo
 from icalendar import Calendar
 from pytz import timezone, utc
 
-# Change here your local timezone
-LOCAL_TZ = timezone("Europe/Paris")
+try:
+    from tzlocal import get_localzone
+    LOCAL_TZ = get_localzone()
+except:
+    # Change here your local timezone
+    LOCAL_TZ = timezone("Europe/Paris")
+
 # Window length in days (left & right from current time). Has to be positive.
 WINDOW = 90
 # leave empty if you don't want to attach any tag to recurring events
