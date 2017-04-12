@@ -1,6 +1,5 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python
 
-from __future__ import print_function
 import sys
 from math import floor
 from datetime import date, datetime, timedelta, tzinfo
@@ -86,7 +85,7 @@ class EventSingleIter:
         return self
 
     # Iterate just once
-    def next(self):
+    def __next__(self):
         if self.result:
             aux = self.result
             self.result = ()
@@ -203,10 +202,10 @@ class EventRecurYearlyIter:
 if len(sys.argv) < 2:
     fh = sys.stdin
 else:
-    fh = open(sys.argv[1],'rb')
+    fh = open(sys.argv[1], 'r', encoding='utf-8')
 
 if len(sys.argv) > 2:
-    fh_w = open(sys.argv[2],'wb')
+    fh_w = open(sys.argv[2], 'w', encoding='utf-8')
 else:
     fh_w = sys.stdout
 
@@ -226,7 +225,7 @@ for comp in cal.walk():
         for comp_start, comp_end, rec_event in event_iter:
             SUMMARY = ""
             if "SUMMARY" in comp:
-                SUMMARY = comp['SUMMARY'].to_ical()
+                SUMMARY = comp['SUMMARY'].to_ical().decode(encoding='utf-8')
                 SUMMARY = SUMMARY.replace('\\,', ',')
             if not len(SUMMARY):
                 SUMMARY = "(No title)"
@@ -246,4 +245,5 @@ for comp in cal.walk():
             fh_w.write("\n")
     except:
         pass
-exit(0);
+
+exit();
