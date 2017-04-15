@@ -19,6 +19,7 @@ ical2org.py is a python script and it needs the following libraries:
 
 - icalendar
 - pytz
+- tzlocal (optional)
 
 You can install those packages as follows (thanks to Guido Van Hoecke):
 
@@ -39,7 +40,8 @@ sudo easy_install pytz-2013b-py2.7.egg
 Customize the script
 ====================
 
-You should edit the script and modify the lines at the beginning in order to
-specify your local timezone (line 9) and the window of the time-frame, in
-days (the time-frame is relative to the current time). You can also modify
-the org TAG used for specifying that an event is recurring.
+If you have `tzlocal` installed, the script will use the system
+timezone. Otherwise, You should edit the script and modify the lines at the
+beginning in order to specify your local timezone (line 9) and the window of
+the time-frame, in days (the time-frame is relative to the current time). You
+can also modify the org TAG used for specifying that an event is recurring.
