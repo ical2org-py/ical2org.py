@@ -1,0 +1,8 @@
+description: Three short events exported around their validity (all three expected)
+context:
+    ctime: 2017-12-15T20:35:51
+    is_dst: true
+    tzone: Europe/Prague
+parameters:
+    tzone: Europe/Prague
+    days: 90

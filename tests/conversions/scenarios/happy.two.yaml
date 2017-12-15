@@ -1,0 +1,7 @@
+description: Three short events take TWO.
+context:
+    ctime: 2017-09-15T20:35:51
+    tzone: Europe/Prague
+parameters:
+    tzone: Europe/Prague
+    days: 90
