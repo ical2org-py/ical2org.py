@@ -28,57 +28,75 @@ RECUR_TAG = ":RECURRING:"
 
 # Do not change anything below
 
+
 def orgDatetime(dt):
-    '''Given a datetime in his own timezone, return YYYY-MM-DD DayofWeek HH:MM in local timezone'''
+    '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
+    '''
     return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a %H:%M>")
 
+
 def orgDate(dt):
-    '''Given a date in his own timezone, return YYYY-MM-DD DayofWeek in local timezone'''
+    '''Timezone aware date to YYYY-MM-DD DayofWeek in localtime.
+    '''
     return dt.astimezone(LOCAL_TZ).strftime("<%Y-%m-%d %a>")
 
+
 def get_datetime(dt):
-    '''Given a datetime, return it. If argument is date, convert it to a local datetime'''
+    '''Convert date or datetime to local datetime.
+    '''
     if isinstance(dt, datetime):
         return dt
     else:
         # d is date. Being a naive date, let's suppose it is in local
         # timezone.  Unfortunately using the tzinfo argument of the standard
         # datetime constructors ''does not work'' with pytz for many
-        # timezones, so create first a utc datetime, and convert to local timezone
-        aux_dt = datetime(year = dt.year, month = dt.month, day = dt.day, tzinfo = utc)
+        # timezones, so create first a utc datetime, and convert to local
+        # timezone
+        aux_dt = datetime(year=dt.year, month=dt.month, day=dt.day, tzinfo=utc)
         return aux_dt.astimezone(LOCAL_TZ)
+
 
 def add_delta_dst(dt, delta):
     '''Add a timedelta to a datetime, adjusting DST when appropriate'''
-    # convert datetime to naive, add delta and convert again to his own timezone
-    naive_dt = dt.replace(tzinfo = None)
+    # convert datetime to naive, add delta and convert again to his own
+    # timezone
+    naive_dt = dt.replace(tzinfo=None)
     return dt.tzinfo.localize(naive_dt + delta)
+
 
 def advance_just_before(start_dt, timeframe_start, delta_days):
     '''Advance an start_dt datetime to the first date just before
     timeframe_start. Use delta_days for advancing the event. Precond:
     start_dt < timeframe_start'''
-    delta = timedelta(days = delta_days)
-    delta_ord = floor( (timeframe_start.toordinal() - start_dt.toordinal() - 1) / delta_days )
-    return (add_delta_dst(start_dt, timedelta(days = delta_days * int(delta_ord))), int(delta_ord))
+    delta = timedelta(days=delta_days)
+    delta_ord = floor(
+        (timeframe_start.toordinal() - start_dt.toordinal() - 1) / delta_days)
+    return (add_delta_dst(
+        start_dt, timedelta(days=delta_days * int(delta_ord))), int(delta_ord))
 
 
 def generate_event_iterator(comp, timeframe_start, timeframe_end):
-    ''' Given an VEVENT object return an iterator with the proper delta (days, weeks, etc)'''
+    '''Get iterator with the proper delta (days, weeks, etc)'''
     # Note: timeframe_start and timeframe_end are in UTC
-    if comp.name != 'VEVENT': return []
+    if comp.name != 'VEVENT':
+        return []
     if 'RRULE' in comp:
         return {
-            'WEEKLY' : EventRecurDaysIter(7, comp, timeframe_start, timeframe_end),
-            'DAILY' : EventRecurDaysIter(1, comp, timeframe_start, timeframe_end),
-            'MONTHLY' : [],
-            'YEARLY' : EventRecurYearlyIter(comp, timeframe_start, timeframe_end)
-            }[ comp['RRULE']['FREQ'][0] ]
+            'WEEKLY': EventRecurDaysIter(7, comp, timeframe_start,
+                                         timeframe_end),
+            'DAILY': EventRecurDaysIter(1, comp, timeframe_start,
+                                        timeframe_end),
+            'MONTHLY': [],
+            'YEARLY': EventRecurYearlyIter(comp, timeframe_start,
+                                           timeframe_end)
+        }[comp['RRULE']['FREQ'][0]]
     else:
         return EventSingleIter(comp, timeframe_start, timeframe_end)
 
+
 class EventSingleIter:
     '''Iterator for non-recurring single events.'''
+
     def __init__(self, comp, timeframe_start, timeframe_end):
         self.ev_start = get_datetime(comp['DTSTART'].dt)
 
@@ -92,7 +110,7 @@ class EventSingleIter:
         self.duration = self.ev_end - self.ev_start
         self.result = ()
         if (self.ev_start < timeframe_end and self.ev_end > timeframe_start):
-            self.result = ( self.ev_start, self.ev_end, 0)
+            self.result = (self.ev_start, self.ev_end, 0)
 
     def __iter__(self):
         return self
@@ -109,6 +127,7 @@ class EventSingleIter:
 
 class EventRecurDaysIter:
     '''Iterator for daily-based recurring events (daily, weekly).'''
+
     def __init__(self, days, comp, timeframe_start, timeframe_end):
         self.ev_start = get_datetime(comp['DTSTART'].dt)
         self.ev_end = get_datetime(comp['DTEND'].dt)
@@ -124,19 +143,23 @@ class EventRecurDaysIter:
         if 'UNTIL' in comp['RRULE']:
             if self.is_count:
                 raise "UNTIL and COUNT MUST NOT occur in the same 'recur'"
-            self.until_utc = get_datetime(comp['RRULE']['UNTIL'][0]).astimezone(utc)
-        else :
+            self.until_utc = get_datetime(
+                comp['RRULE']['UNTIL'][0]).astimezone(utc)
+        else:
             self.until_utc = timeframe_end
         if self.until_utc < timeframe_start:
-            self.current = self.until_utc + self.delta # Default value for no iteration
+            # Default value for no iteration
+            self.current = self.until_utc + self.delta
             return
         self.until_utc = min(self.until_utc, timeframe_end)
         if self.ev_start < timeframe_start:
             # advance to timeframe start
-            (self.current, counts) = advance_just_before(self.ev_start, timeframe_start, delta_days)
+            (self.current, counts) = advance_just_before(
+                self.ev_start, timeframe_start, delta_days)
             if self.is_count:
                 self.count -= counts
-                if self.count < 1: return
+                if self.count < 1:
+                    return
             while self.current < timeframe_start:
                 self.current = add_delta_dst(self.current, self.delta)
         else:
@@ -150,7 +173,8 @@ class EventRecurDaysIter:
             raise StopIteration
         event_aux = self.current
         self.current = add_delta_dst(self.current, self.delta)
-        return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
+        return (event_aux,
+                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
     def next_count(self):
         if self.count < 1:
@@ -158,10 +182,12 @@ class EventRecurDaysIter:
         self.count -= 1
         event_aux = self.current
         self.current = add_delta_dst(self.current, self.delta)
-        return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
+        return (event_aux,
+                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
     def next(self):
-        if self.is_count: return self.next_count()
+        if self.is_count:
+            return self.next_count()
         return self.next_until()
 
 
@@ -178,7 +204,9 @@ class EventRecurYearlyIter:
         self.is_until = False
         if 'UNTIL' in comp['RRULE']:
             self.is_until = True
-            self.end = min(self.end, get_datetime(comp['RRULE']['UNTIL'][0]).astimezone(utc))
+            self.end = min(self.end,
+                           get_datetime(
+                               comp['RRULE']['UNTIL'][0]).astimezone(utc))
         if self.end < self.start:
             # Default values for no iteration
             self.i = 0
@@ -206,18 +234,23 @@ class EventRecurYearlyIter:
         return self
 
     def next(self):
-        if self.i >= self.n: raise StopIteration
-        event_aux = self.ev_start.replace(year = self.years[self.i])
-        event_aux = event_aux.replace(month = self.bymonth)
-        event_aux = event_aux.replace(day = self.bymonthday)
-        self.i = self.i + 1;
-        if event_aux > self.end: raise StopIteration
-        if event_aux < self.start: return self.next()
-        return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
+        if self.i >= self.n:
+            raise StopIteration
+        event_aux = self.ev_start.replace(year=self.years[self.i])
+        event_aux = event_aux.replace(month=self.bymonth)
+        event_aux = event_aux.replace(day=self.bymonthday)
+        self.i = self.i + 1
+        if event_aux > self.end:
+            raise StopIteration
+        if event_aux < self.start:
+            return self.next()
+        return (event_aux,
+                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
 
 class IcalParsingError(Exception):
     pass
+
 
 def main():
     """Convert input stream in ICAL format into org-mode format on output.
@@ -243,18 +276,18 @@ def main():
         fh = sys.stdin
     else:
         try:
-            fh = open(sys.argv[1],'rb')
+            fh = open(sys.argv[1], 'rb')
             to_close.append(fh)
         except IOError as e:
-            print_error(str(e))
+            print_error(e)
             sys.exit(1)
 
     if len(sys.argv) > 2:
         try:
-            fh_w = open(sys.argv[2],'wb')
+            fh_w = open(sys.argv[2], 'wb')
             to_close.append(fh_w)
         except IOError as e:
-            print_error(str(e))
+            print_error(e)
             sys.exit(1)
     else:
         fh_w = sys.stdout
@@ -262,7 +295,7 @@ def main():
         convert(fh, fh_w)
         sys.exit(0)
     except IcalParsingError as e:
-        print_error(e.args[0])
+        print_error(e)
         sys.exit(1)
     finally:
         for f in to_close:
@@ -273,15 +306,13 @@ def main():
 def convert(fh, fh_w):
     try:
         cal = Calendar.from_ical(fh.read())
-    except:
-        raise IcalParsingError("ERROR parsing ical file")
-        print_error("ERROR parsing ical file")
-        exit(1)
-        pass
+    except ValueError as e:
+        msg = "ERROR parsing ical file: %s" % str(e)
+        raise IcalParsingError(msg)
 
     now = datetime.now(utc)
-    start = now - timedelta( days = WINDOW)
-    end = now + timedelta( days = WINDOW)
+    start = now - timedelta(days=WINDOW)
+    end = now + timedelta(days=WINDOW)
     for comp in cal.walk():
         try:
             event_iter = generate_event_iterator(comp, start, end)
@@ -297,15 +328,20 @@ def convert(fh, fh_w):
                     fh_w.write(" {}\n".format(RECUR_TAG))
                 fh_w.write("\n")
                 if isinstance(comp["DTSTART"].dt, datetime):
-                    fh_w.write("  {}--{}\n".format(orgDatetime(comp_start), orgDatetime(comp_end)))
+                    fh_w.write("  {}--{}\n".format(
+                        orgDatetime(comp_start), orgDatetime(comp_end)))
                 else:  # all day event
-                    fh_w.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end - timedelta(days=1))))
+                    fh_w.write("  {}--{}\n".format(
+                        orgDate(comp_start),
+                        orgDate(comp_end - timedelta(days=1))))
                 if 'DESCRIPTION' in comp:
-                    DESCRIPTION = '\n'.join(comp['DESCRIPTION'].to_ical().split('\\n'))
+                    DESCRIPTION = '\n'.join(
+                        comp['DESCRIPTION'].to_ical().split('\\n'))
                     DESCRIPTION = DESCRIPTION.replace('\\,', ',')
                     fh_w.write("{}\n".format(DESCRIPTION))
 
                 fh_w.write("\n")
         except Exception as e:
-            pass
-    exit(0);
+            msg = "Warning: an exception occured: %s" % e
+            print_error(msg)
+    exit(0)
