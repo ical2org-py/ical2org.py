@@ -1,4 +1,5 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
+from builtins import object
 import warnings
 import sys
 from math import floor
@@ -96,7 +97,7 @@ class EventSingleIter(object):
         return self
 
     # Iterate just once
-    def next(self):
+    def __next__(self):
         if self.result:
             aux = self.result
             self.result = ()
@@ -166,7 +167,7 @@ class EventRecurDaysIter(object):
         return (event_aux,
                 event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
-    def next(self):
+    def __next__(self):
         if self.is_count:
             return self.next_count()
         return self.next_until()
@@ -215,7 +216,7 @@ class EventRecurYearlyIter(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if self.i >= self.n:
             raise StopIteration
         event_aux = self.ev_start.replace(year=self.years[self.i])
@@ -225,7 +226,7 @@ class EventRecurYearlyIter(object):
         if event_aux > self.end:
             raise StopIteration
         if event_aux < self.start:
-            return self.next()
+            return next(self)
         return (event_aux,
                 event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
@@ -262,7 +263,7 @@ class Convertor(object):
                 for comp_start, comp_end, rec_event in event_iter:
                     summary = ""
                     if "SUMMARY" in comp:
-                        summary = comp['SUMMARY'].to_ical()
+                        summary = comp['SUMMARY'].to_ical().decode("utf-8")
                         summary = summary.replace('\\,', ',')
                     if not summary:
                         summary = "(No title)"
@@ -279,8 +280,8 @@ class Convertor(object):
                             orgDate(comp_start, self.tz),
                             orgDate(comp_end - timedelta(days=1), self.tz)))
                     if 'DESCRIPTION' in comp:
-                        description = '\n'.join(
-                            comp['DESCRIPTION'].to_ical().split('\\n'))
+                        description = '\n'.join(comp['DESCRIPTION'].to_ical()
+                                                .decode("utf-8").split('\\n'))
                         description = description.replace('\\,', ',')
                         fh_w.write("{}\n".format(description))
 
@@ -329,8 +330,8 @@ def print_timezones(ctx, param, value):
     default=None,
     callback=check_timezone,
     help="Timezone to use. (local timezone by default)")
-@click.argument("ics_file", type=click.File("rb"))
-@click.argument("org_file", type=click.File("wb"))
+@click.argument("ics_file", type=click.File("r", encoding="utf-8"))
+@click.argument("org_file", type=click.File("w", encoding="utf-8"))
 def main(ics_file, org_file, days, timezone):
     """Convert ICAL format into org-mode.
 

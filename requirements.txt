@@ -1,4 +1,5 @@
 click
+future
 icalendar
 pytz
 tzlocal
