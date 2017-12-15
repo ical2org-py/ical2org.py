@@ -205,50 +205,52 @@ class EventRecurYearlyIter:
         if event_aux < self.start: return self.next()
         return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
-if len(sys.argv) < 2:
-    fh = sys.stdin
-else:
-    fh = open(sys.argv[1],'rb')
 
-if len(sys.argv) > 2:
-    fh_w = open(sys.argv[2],'wb')
-else:
-    fh_w = sys.stdout
+def main():
+    if len(sys.argv) < 2:
+        fh = sys.stdin
+    else:
+        fh = open(sys.argv[1],'rb')
 
-try:
-    cal = Calendar.from_ical(fh.read())
-except:
-    print("ERROR parsing ical file", file=sys.stderr)
-    exit(1)
-    pass
+    if len(sys.argv) > 2:
+        fh_w = open(sys.argv[2],'wb')
+    else:
+        fh_w = sys.stdout
 
-now = datetime.now(utc)
-start = now - timedelta( days = WINDOW)
-end = now + timedelta( days = WINDOW)
-for comp in cal.walk():
     try:
-        event_iter = generate_event_iterator(comp, start, end)
-        for comp_start, comp_end, rec_event in event_iter:
-            SUMMARY = ""
-            if "SUMMARY" in comp:
-                SUMMARY = comp['SUMMARY'].to_ical()
-                SUMMARY = SUMMARY.replace('\\,', ',')
-            if not len(SUMMARY):
-                SUMMARY = "(No title)"
-            fh_w.write("* {}".format(SUMMARY))
-            if rec_event and len(RECUR_TAG):
-                fh_w.write(" {}\n".format(RECUR_TAG))
-            fh_w.write("\n")
-            if isinstance(comp["DTSTART"].dt, datetime):
-                fh_w.write("  {}--{}\n".format(orgDatetime(comp_start), orgDatetime(comp_end)))
-            else:  # all day event
-                fh_w.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end - timedelta(days=1))))
-            if 'DESCRIPTION' in comp:
-                DESCRIPTION = '\n'.join(comp['DESCRIPTION'].to_ical().split('\\n'))
-                DESCRIPTION = DESCRIPTION.replace('\\,', ',')
-                fh_w.write("{}\n".format(DESCRIPTION))
-
-            fh_w.write("\n")
+        cal = Calendar.from_ical(fh.read())
     except:
+        print("ERROR parsing ical file", file=sys.stderr)
+        exit(1)
         pass
-exit(0);
+
+    now = datetime.now(utc)
+    start = now - timedelta( days = WINDOW)
+    end = now + timedelta( days = WINDOW)
+    for comp in cal.walk():
+        try:
+            event_iter = generate_event_iterator(comp, start, end)
+            for comp_start, comp_end, rec_event in event_iter:
+                SUMMARY = ""
+                if "SUMMARY" in comp:
+                    SUMMARY = comp['SUMMARY'].to_ical()
+                    SUMMARY = SUMMARY.replace('\\,', ',')
+                if not len(SUMMARY):
+                    SUMMARY = "(No title)"
+                fh_w.write("* {}".format(SUMMARY))
+                if rec_event and len(RECUR_TAG):
+                    fh_w.write(" {}\n".format(RECUR_TAG))
+                fh_w.write("\n")
+                if isinstance(comp["DTSTART"].dt, datetime):
+                    fh_w.write("  {}--{}\n".format(orgDatetime(comp_start), orgDatetime(comp_end)))
+                else:  # all day event
+                    fh_w.write("  {}--{}\n".format(orgDate(comp_start), orgDate(comp_end - timedelta(days=1))))
+                if 'DESCRIPTION' in comp:
+                    DESCRIPTION = '\n'.join(comp['DESCRIPTION'].to_ical().split('\\n'))
+                    DESCRIPTION = DESCRIPTION.replace('\\,', ',')
+                    fh_w.write("{}\n".format(DESCRIPTION))
+
+                fh_w.write("\n")
+        except:
+            pass
+    exit(0);
