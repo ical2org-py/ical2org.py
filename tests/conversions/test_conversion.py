@@ -33,7 +33,7 @@ class Scenario(object):
         """Expected result of conversion to org format"""
         assert self.expected_file.exists()
 
-        with cfg_file.open(encoding="utf-8") as f:
+        with cfg_file.open("r", encoding="utf-8") as f:
             self.cfg = yaml.load(f)
 
         self.desciption = self.cfg["description"]
@@ -82,8 +82,8 @@ def test_conversion(scenario, tmpdir):
 
     result_file = tmpdir / "output.org"
     with scenario.freeze_time():
-        with ics_file.open("rb") as ics_f:
-            with result_file.open("wb") as result_f:
+        with ics_file.open("r", encoding="utf-8") as ics_f:
+            with result_file.open("w", encoding="utf-8") as result_f:
                 convertor(ics_f, result_f)
     assert result_file.exists()
     res_txt = result_file.read_text(encoding="utf-8")
