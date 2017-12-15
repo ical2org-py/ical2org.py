@@ -1,28 +1,27 @@
 from __future__ import print_function
+import warnings
 import sys
 from math import floor
 from datetime import date, datetime, timedelta, tzinfo
 from icalendar import Calendar
-from pytz import timezone, utc
+from pytz import timezone, utc, all_timezones
+from tzlocal import get_localzone
+import click
 
 
-def print_error(msg):
-    print(msg, file=sys.stderr)
-
-
-def orgDatetime(dt, local_tz):
+def orgDatetime(dt, tz):
     '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
     '''
-    return dt.astimezone(local_tz).strftime("<%Y-%m-%d %a %H:%M>")
+    return dt.astimezone(tz).strftime("<%Y-%m-%d %a %H:%M>")
 
 
-def orgDate(dt, local_tz):
+def orgDate(dt, tz):
     '''Timezone aware date to YYYY-MM-DD DayofWeek in localtime.
     '''
-    return dt.astimezone(local_tz).strftime("<%Y-%m-%d %a>")
+    return dt.astimezone(tz).strftime("<%Y-%m-%d %a>")
 
 
-def get_datetime(dt, local_tz):
+def get_datetime(dt, tz):
     '''Convert date or datetime to local datetime.
     '''
     if isinstance(dt, datetime):
@@ -34,7 +33,7 @@ def get_datetime(dt, local_tz):
         # timezones, so create first a utc datetime, and convert to local
         # timezone
         aux_dt = datetime(year=dt.year, month=dt.month, day=dt.day, tzinfo=utc)
-        return aux_dt.astimezone(local_tz)
+        return aux_dt.astimezone(tz)
 
 
 def add_delta_dst(dt, delta):
@@ -56,7 +55,7 @@ def advance_just_before(start_dt, timeframe_start, delta_days):
         start_dt, timedelta(days=delta_days * int(delta_ord))), int(delta_ord))
 
 
-def generate_event_iterator(comp, timeframe_start, timeframe_end, local_tz):
+def generate_event_iterator(comp, timeframe_start, timeframe_end, tz):
     '''Get iterator with the proper delta (days, weeks, etc)'''
     # Note: timeframe_start and timeframe_end are in UTC
     if comp.name != 'VEVENT':
@@ -64,32 +63,29 @@ def generate_event_iterator(comp, timeframe_start, timeframe_end, local_tz):
     if 'RRULE' in comp:
         return {
             'WEEKLY':
-            EventRecurDaysIter(7, comp, timeframe_start, timeframe_end,
-                               local_tz),
+            EventRecurDaysIter(7, comp, timeframe_start, timeframe_end, tz),
             'DAILY':
-            EventRecurDaysIter(1, comp, timeframe_start, timeframe_end,
-                               local_tz),
+            EventRecurDaysIter(1, comp, timeframe_start, timeframe_end, tz),
             'MONTHLY': [],
             'YEARLY':
-            EventRecurYearlyIter(comp, timeframe_start, timeframe_end,
-                                 local_tz)
+            EventRecurYearlyIter(comp, timeframe_start, timeframe_end, tz)
         }[comp['RRULE']['FREQ'][0]]
     else:
-        return EventSingleIter(comp, timeframe_start, timeframe_end, local_tz)
+        return EventSingleIter(comp, timeframe_start, timeframe_end, tz)
 
 
 class EventSingleIter(object):
     '''Iterator for non-recurring single events.'''
 
-    def __init__(self, comp, timeframe_start, timeframe_end, local_tz):
-        self.ev_start = get_datetime(comp['DTSTART'].dt, local_tz)
+    def __init__(self, comp, timeframe_start, timeframe_end, tz):
+        self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
 
         # Events with the same begin/end time same do not include
         # "DTEND".
         if "DTEND" not in comp:
             self.ev_end = self.ev_start
         else:
-            self.ev_end = get_datetime(comp['DTEND'].dt, local_tz)
+            self.ev_end = get_datetime(comp['DTEND'].dt, tz)
 
         self.duration = self.ev_end - self.ev_start
         self.result = ()
@@ -112,9 +108,9 @@ class EventSingleIter(object):
 class EventRecurDaysIter(object):
     '''Iterator for daily-based recurring events (daily, weekly).'''
 
-    def __init__(self, days, comp, timeframe_start, timeframe_end, local_tz):
-        self.ev_start = get_datetime(comp['DTSTART'].dt, local_tz)
-        self.ev_end = get_datetime(comp['DTEND'].dt, local_tz)
+    def __init__(self, days, comp, timeframe_start, timeframe_end, tz):
+        self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
+        self.ev_end = get_datetime(comp['DTEND'].dt, tz)
         self.duration = self.ev_end - self.ev_start
         self.is_count = False
         if 'COUNT' in comp['RRULE']:
@@ -129,7 +125,7 @@ class EventRecurDaysIter(object):
                 msg = "UNTIL and COUNT MUST NOT occur in the same 'recur'"
                 raise ValueError(msg)
             self.until_utc = get_datetime(comp['RRULE']['UNTIL'][0],
-                                          local_tz).astimezone(utc)
+                                          tz).astimezone(utc)
         else:
             self.until_utc = timeframe_end
         if self.until_utc < timeframe_start:
@@ -181,9 +177,9 @@ class EventRecurMonthlyIter(object):
 
 
 class EventRecurYearlyIter(object):
-    def __init__(self, comp, timeframe_start, timeframe_end, local_tz):
-        self.ev_start = get_datetime(comp['DTSTART'].dt, local_tz)
-        self.ev_end = get_datetime(comp['DTEND'].dt, local_tz)
+    def __init__(self, comp, timeframe_start, timeframe_end, tz):
+        self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
+        self.ev_end = get_datetime(comp['DTEND'].dt, tz)
         self.start = timeframe_start
         self.end = timeframe_end
         self.is_until = False
@@ -191,7 +187,7 @@ class EventRecurYearlyIter(object):
             self.is_until = True
             self.end = min(self.end,
                            get_datetime(comp['RRULE']['UNTIL'][0],
-                                        local_tz).astimezone(utc))
+                                        tz).astimezone(utc))
         if self.end < self.start:
             # Default values for no iteration
             self.i = 0
@@ -238,83 +234,17 @@ class IcalParsingError(Exception):
     pass
 
 
-def main():
-    """Convert input stream in ICAL format into org-mode format on output.
-
-    Input is read from stdin or first positional argument.
-
-    Output is either stdout or the first non-input file name argument.
-
-    ::
-
-        $ cat in.ical | ical2orgpy > out.org
-        $ cat in.ical | ical2orgpy out.org
-        $ ical2orgpy in.ical > out.org
-        $ ical2orgpy in.ical out.org
-    """
-    if (len(sys.argv) == 1) or ("-h" in sys.argv) or ("--help" in sys.argv):
-        print(main.__doc__)
-        sys.exit(0)
-    # TODO: get following default values from command line options
-    default_window = 90
-    default_tz = "Europe/Paris"
-
-    to_close = []
-
-    if len(sys.argv) < 2:
-        fh = sys.stdin
-    else:
-        try:
-            fh = open(sys.argv[1], 'rb')
-            to_close.append(fh)
-        except IOError as e:
-            print_error(e)
-            sys.exit(1)
-
-    if len(sys.argv) > 2:
-        try:
-            fh_w = open(sys.argv[2], 'wb')
-            to_close.append(fh_w)
-        except IOError as e:
-            print_error(e)
-            sys.exit(1)
-    else:
-        fh_w = sys.stdout
-    convertor = Convertor(default_window, default_tz)
-    try:
-        convertor(fh, fh_w)
-        sys.exit(0)
-    except IcalParsingError as e:
-        print_error(e)
-        sys.exit(1)
-    finally:
-        for f in to_close:
-            f.close()
-    sys.exit(1)
-
-
 class Convertor(object):
     RECUR_TAG = ":RECURRING:"
 
     # Do not change anything below
 
-    def __init__(self, window=90, default_tz="Europe/Paris"):
-        """window: Window length in days (left & right from current time). Has
+    def __init__(self, days=90, tz=None):
+        """days: Window length in days (left & right from current time). Has
         to be positive.
         """
-        self.local_tz = self._set_local_tz(default_tz)
-        self.window = window
-
-    def _set_local_tz(self, default_tz):
-        try:
-            from tzlocal import get_localzone
-            return get_localzone()
-        except ImportError as e:
-            # Change here your local timezone
-            # TODO: refactor to enter default timezone via command line option
-            msg = "Warning: Unable to import tzlocal, setting timezone %s"
-            print_error(msg % default_tz)
-            return timezone(default_tz)
+        self.tz = timezone(tz) if tz else get_localzone()
+        self.days = days
 
     def __call__(self, fh, fh_w):
         try:
@@ -324,12 +254,11 @@ class Convertor(object):
             raise IcalParsingError(msg)
 
         now = datetime.now(utc)
-        start = now - timedelta(days=self.window)
-        end = now + timedelta(days=self.window)
+        start = now - timedelta(days=self.days)
+        end = now + timedelta(days=self.days)
         for comp in cal.walk():
             try:
-                event_iter = generate_event_iterator(comp, start, end,
-                                                     self.local_tz)
+                event_iter = generate_event_iterator(comp, start, end, self.tz)
                 for comp_start, comp_end, rec_event in event_iter:
                     summary = ""
                     if "SUMMARY" in comp:
@@ -343,13 +272,12 @@ class Convertor(object):
                     fh_w.write("\n")
                     if isinstance(comp["DTSTART"].dt, datetime):
                         fh_w.write("  {}--{}\n".format(
-                            orgDatetime(comp_start, self.local_tz),
-                            orgDatetime(comp_end, self.local_tz)))
+                            orgDatetime(comp_start, self.tz),
+                            orgDatetime(comp_end, self.tz)))
                     else:  # all day event
                         fh_w.write("  {}--{}\n".format(
-                            orgDate(comp_start, self.local_tz),
-                            orgDate(
-                                comp_end - timedelta(days=1), self.local_tz)))
+                            orgDate(comp_start, self.tz),
+                            orgDate(comp_end - timedelta(days=1), self.tz)))
                     if 'DESCRIPTION' in comp:
                         description = '\n'.join(
                             comp['DESCRIPTION'].to_ical().split('\\n'))
@@ -359,4 +287,66 @@ class Convertor(object):
                     fh_w.write("\n")
             except Exception as e:
                 msg = "Warning: an exception occured: %s" % e
-                print_error(msg)
+                warnings.warn(msg)
+
+
+def check_timezone(ctx, param, value):
+    if (value is None) or (value in all_timezones):
+        return value
+    else:
+        click.echo("Invalid timezone value {value}.".format(value=value))
+        click.echo("Use --print-timezones to show acceptable values.")
+        ctx.exit(1)
+
+
+def print_timezones(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    for tz in all_timezones:
+        click.echo(tz)
+    ctx.exit()
+
+
+@click.command(context_settings={"help_option_names": ['-h', '--help']})
+@click.option(
+    "--print-timezones",
+    "-p",
+    is_flag=True,
+    callback=print_timezones,
+    is_eager=True,
+    expose_value=False,
+    help="Print acceptable timezone names and exit.")
+@click.option(
+    "--days",
+    "-d",
+    default=90,
+    type=click.IntRange(0, clamp=True),
+    help=("Window length in days (left & right from current time). "
+          "Has to be positive."))
+@click.option(
+    "--timezone",
+    "-t",
+    default=None,
+    callback=check_timezone,
+    help="Timezone to use. (local timezone by default)")
+@click.argument("ics_file", type=click.File("rb"))
+@click.argument("org_file", type=click.File("wb"))
+def main(ics_file, org_file, days, timezone):
+    """Convert ICAL format into org-mode.
+
+    Files can be set as explicit file name, or `-` for stdin or stdout::
+
+        $ ical2orgpy in.ical out.org
+
+        $ ical2orgpy in.ical - > out.org
+
+        $ cat in.ical | ical2orgpy - out.org
+
+        $ cat in.ical | ical2orgpy - - > out.org
+    """
+    convertor = Convertor(days, timezone)
+    try:
+        convertor(ics_file, org_file)
+    except IcalParsingError as e:
+        click.echo(str(e), err=True)
+        raise click.Abort()
