@@ -5,12 +5,21 @@ from datetime import date, datetime, timedelta, tzinfo
 from icalendar import Calendar
 from pytz import timezone, utc
 
+
+def print_error(msg):
+    print(msg, file=sys.stderr)
+
+
 try:
     from tzlocal import get_localzone
     LOCAL_TZ = get_localzone()
-except:
+except ImportError as e:
     # Change here your local timezone
-    LOCAL_TZ = timezone("Europe/Paris")
+    # TODO: refactor to enter default timezone via command line option
+    tzname = "Europe/Paris"
+    msg = "Warning: Unable to import tzlocal, setting timezone %s" % tzname
+    print_error(msg)
+    LOCAL_TZ = timezone(tzname)
 
 # Window length in days (left & right from current time). Has to be positive.
 WINDOW = 90
@@ -97,6 +106,7 @@ class EventSingleIter:
             raise StopIteration
         return aux
 
+
 class EventRecurDaysIter:
     '''Iterator for daily-based recurring events (daily, weekly).'''
     def __init__(self, days, comp, timeframe_start, timeframe_end):
@@ -154,8 +164,10 @@ class EventRecurDaysIter:
         if self.is_count: return self.next_count()
         return self.next_until()
 
+
 class EventRecurMonthlyIter:
     pass
+
 
 class EventRecurYearlyIter:
     def __init__(self, comp, timeframe_start, timeframe_end):
@@ -206,10 +218,6 @@ class EventRecurYearlyIter:
 
 class IcalParsingError(Exception):
     pass
-
-def print_error(msg):
-    print(msg, file=sys.stderr)
-
 
 def main():
     """Convert input stream in ICAL format into org-mode format on output.
