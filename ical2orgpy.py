@@ -1,4 +1,4 @@
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 from builtins import object
 import warnings
 import sys
@@ -266,37 +266,38 @@ class Convertor(object):
                         summary = comp['SUMMARY'].to_ical().decode("utf-8")
                         summary = summary.replace('\\,', ',')
                     if not summary:
-                        summary = "(No title)"
-                    fh_w.write("* {}".format(summary))
+                        summary = u"(No title)"
+                    fh_w.write(u"* {}".format(summary))
                     if rec_event and self.RECUR_TAG:
-                        fh_w.write(" {}\n".format(self.RECUR_TAG))
-                    fh_w.write("\n")
+                        fh_w.write(u" {}\n".format(self.RECUR_TAG))
+                    fh_w.write(u"\n")
                     if isinstance(comp["DTSTART"].dt, datetime):
-                        fh_w.write("  {}--{}\n".format(
+                        fh_w.write(u"  {}--{}\n".format(
                             orgDatetime(comp_start, self.tz),
                             orgDatetime(comp_end, self.tz)))
                     else:  # all day event
-                        fh_w.write("  {}--{}\n".format(
+                        fh_w.write(u"  {}--{}\n".format(
                             orgDate(comp_start, self.tz),
                             orgDate(comp_end - timedelta(days=1), self.tz)))
                     if 'DESCRIPTION' in comp:
                         description = '\n'.join(comp['DESCRIPTION'].to_ical()
                                                 .decode("utf-8").split('\\n'))
                         description = description.replace('\\,', ',')
-                        fh_w.write("{}\n".format(description))
+                        fh_w.write(u"{}\n".format(description))
 
-                    fh_w.write("\n")
+                    fh_w.write(u"\n")
             except Exception as e:
                 msg = "Warning: an exception occured: %s" % e
                 warnings.warn(msg)
+                raise
 
 
 def check_timezone(ctx, param, value):
     if (value is None) or (value in all_timezones):
         return value
     else:
-        click.echo("Invalid timezone value {value}.".format(value=value))
-        click.echo("Use --print-timezones to show acceptable values.")
+        click.echo(u"Invalid timezone value {value}.".format(value=value))
+        click.echo(u"Use --print-timezones to show acceptable values.")
         ctx.exit(1)
 
 
