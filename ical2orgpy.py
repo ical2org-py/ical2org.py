@@ -1,5 +1,3 @@
-#!/usr/bin/python2.7
-
 from __future__ import print_function
 import sys
 from math import floor
@@ -206,21 +204,70 @@ class EventRecurYearlyIter:
         return (event_aux, event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
 
+class IcalParsingError(Exception):
+    pass
+
+def print_error(msg):
+    print(msg, file=sys.stderr)
+
+
 def main():
+    """Convert input stream in ICAL format into org-mode format on output.
+
+    Input is read from stdin or first positional argument.
+
+    Output is either stdout or the first non-input file name argument.
+
+    ::
+
+        $ cat in.ical | ical2orgpy > out.org
+        $ cat in.ical | ical2orgpy out.org
+        $ ical2orgpy in.ical > out.org
+        $ ical2orgpy in.ical out.org
+    """
+    if (len(sys.argv) == 1) or ("-h" in sys.argv) or ("--help" in sys.argv):
+        print(main.__doc__)
+        sys.exit(0)
+
+    to_close = []
+
     if len(sys.argv) < 2:
         fh = sys.stdin
     else:
-        fh = open(sys.argv[1],'rb')
+        try:
+            fh = open(sys.argv[1],'rb')
+            to_close.append(fh)
+        except IOError as e:
+            print_error(str(e))
+            sys.exit(1)
 
     if len(sys.argv) > 2:
-        fh_w = open(sys.argv[2],'wb')
+        try:
+            fh_w = open(sys.argv[2],'wb')
+            to_close.append(fh_w)
+        except IOError as e:
+            print_error(str(e))
+            sys.exit(1)
     else:
         fh_w = sys.stdout
+    try:
+        convert(fh, fh_w)
+        sys.exit(0)
+    except IcalParsingError as e:
+        print_error(e.args[0])
+        sys.exit(1)
+    finally:
+        for f in to_close:
+            f.close()
+    sys.exit(1)
 
+
+def convert(fh, fh_w):
     try:
         cal = Calendar.from_ical(fh.read())
     except:
-        print("ERROR parsing ical file", file=sys.stderr)
+        raise IcalParsingError("ERROR parsing ical file")
+        print_error("ERROR parsing ical file")
         exit(1)
         pass
 
@@ -251,6 +298,6 @@ def main():
                     fh_w.write("{}\n".format(DESCRIPTION))
 
                 fh_w.write("\n")
-        except:
+        except Exception as e:
             pass
     exit(0);
