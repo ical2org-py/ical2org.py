@@ -203,12 +203,12 @@ class EventRecurYearlyIter(object):
         else:
             self.bymonthday = self.ev_start.day
         self.duration = self.ev_end - self.ev_start
-        self.years = range(self.start.year, self.end.year + 1)
+        self.years = list(range(self.start.year, self.end.year + 1))
         if 'COUNT' in comp['RRULE']:
             if self.is_until:
                 msg = "UNTIL and COUNT MUST NOT occur in the same 'recur'"
                 raise ValueError(msg)
-            self.years = range(self.ev_start.year, self.end.year + 1)
+            self.years = list(range(self.ev_start.year, self.end.year + 1))
             del self.years[comp['RRULE']['COUNT'][0]:]
         self.i = 0
         self.n = len(self.years)
