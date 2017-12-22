@@ -35,7 +35,14 @@ You can install the package directly from git source like this::
 To use the script, just call::
 
   $ ~/.local/bin/ical2orgpy
-		  
+
+Alternatively, you can use the `pipsi` package, by just doing::
+
+  $ curl https://raw.githubusercontent.com/mitsuhiko/pipsi/master/get-pipsi.py | python
+  $ cd <to project folder>
+  $ pipsi install .
+
+
 Usage
 =====
 Simply use the `ical2orgpy` command::
