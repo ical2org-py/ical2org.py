@@ -23,11 +23,54 @@ Use `pip` (recommended to install into virtualenv)::
 
 .. info:: The package is still to be published into pypi.
 
+
+Installing from source code
+===========================
+
+You can install the package directly from git source like this::
+
+    $ cd <to project folder>
+    $ pip install --user .
+
+To use the script, just call::
+
+  $ ~/.local/bin/ical2orgpy
+		  
 Usage
 =====
 Simply use the `ical2orgpy` command::
 
     $ ical2orgpy --help
+
+or, if installed locally from the git repo::
+
+    $ ~/.local/bin/ical2orgpy
+
+.. highlight:: bash
+				   
+The script requires two files, the input ics and the output org
+document. Usually, `ical2orgpy` is called within a script that grabs the
+ical file from some source (i.e. Google Calendar), and generates the
+appropriate org document. Such an script would have the following shape::
+
+               #!/bin/bash
+               
+               # customize these
+               WGET=<path to wget>
+               ICS2ORG=<path to ical2org>
+               ICSFILE=$(mktemp)
+               ORGFILE=<path to orgfile>
+               URL=<url to your private Google calendar>
+               
+               # no customization needed below
+    
+               $WGET -O $ICSFILE $URL
+               $ICS2ORG $ICSFILE $ORGFILE
+               rm -f $ICSFILE
+  
+See further instructions here:
+
+http://orgmode.org/worg/org-tutorials/org-google-sync.html
 
 Development
 ===========
