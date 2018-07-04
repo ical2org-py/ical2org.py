@@ -113,7 +113,10 @@ class EventRecurDaysIter(object):
 
     def __init__(self, days, comp, timeframe_start, timeframe_end, tz):
         self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
-        self.ev_end = get_datetime(comp['DTEND'].dt, tz)
+        if "DTEND" not in comp:
+            self.ev_end = self.ev_start
+        else:
+            self.ev_end = get_datetime(comp['DTEND'].dt, tz)
         self.duration = self.ev_end - self.ev_start
         self.is_count = False
         if 'COUNT' in comp['RRULE']:
@@ -182,7 +185,10 @@ class EventRecurMonthlyIter(object):
 class EventRecurYearlyIter(object):
     def __init__(self, comp, timeframe_start, timeframe_end, tz):
         self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
-        self.ev_end = get_datetime(comp['DTEND'].dt, tz)
+        if "DTEND" not in comp:
+            self.ev_end = self.ev_start
+        else:
+            self.ev_end = get_datetime(comp['DTEND'].dt, tz)
         self.start = timeframe_start
         self.end = timeframe_end
         self.is_until = False
