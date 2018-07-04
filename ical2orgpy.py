@@ -26,6 +26,8 @@ def get_datetime(dt, tz):
     '''Convert date or datetime to local datetime.
     '''
     if isinstance(dt, datetime):
+        if not dt.tzinfo:
+            return dt.replace(tzinfo = tz)
         return dt
     else:
         # d is date. Being a naive date, let's suppose it is in local
