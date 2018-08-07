@@ -273,8 +273,14 @@ class Convertor(object):
                     if "SUMMARY" in comp:
                         summary = comp['SUMMARY'].to_ical().decode("utf-8")
                         summary = summary.replace('\\,', ',')
-                    if not summary:
+                    location = ""
+                    if "LOCATION" in comp:
+                        location = comp['LOCATION'].to_ical().decode("utf-8")
+                        location = location.replace('\\,', ',')
+                    if not summary and not location:
                         summary = u"(No title)"
+                    else:
+                        summary += " - " + location
                     fh_w.write(u"* {}".format(summary))
                     if rec_event and self.RECUR_TAG:
                         fh_w.write(u" {}\n".format(self.RECUR_TAG))
