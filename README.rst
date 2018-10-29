@@ -21,8 +21,6 @@ Use `pip` (recommended to install into virtualenv)::
 
     $ pip install ical2orgpy
 
-.. info:: The package is still to be published into pypi.
-
 
 Installing from source code
 ===========================
