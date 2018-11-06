@@ -152,6 +152,11 @@ class EventRecurDaysIter(object):
         else:
             self.current = self.ev_start
 
+        self.exclude = set()
+        if 'EXDATE' in comp:
+            self.exclude = set(
+                get_datetime(dt.dt, tz) for dt in comp['EXDATE'].dts)
+
     def __iter__(self):
         return self
 
@@ -173,9 +178,10 @@ class EventRecurDaysIter(object):
                 event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
     def __next__(self):
-        if self.is_count:
-            return self.next_count()
-        return self.next_until()
+        current = self.next_count() if self.is_count else self.next_until()
+        while current[0] in self.exclude:
+            current = self.next_count() if self.is_count else self.next_until()
+        return current
 
 
 class EventRecurMonthlyIter(object):
