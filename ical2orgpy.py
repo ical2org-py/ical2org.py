@@ -8,6 +8,7 @@ from icalendar import Calendar
 from pytz import timezone, utc, all_timezones
 from tzlocal import get_localzone
 import click
+import itertools
 
 
 def orgDatetime(dt, tz):
@@ -152,6 +153,15 @@ class EventRecurDaysIter(object):
         else:
             self.current = self.ev_start
 
+        self.exclude = set()
+        if 'EXDATE' in comp:
+            exdate = comp['EXDATE']
+            if isinstance(exdate, list):
+                exdate = itertools.chain.from_iterable([e.dts for e in exdate])
+            else:
+                exdate = exdate.dts
+            self.exclude = set([get_datetime(dt.dt, tz) for dt in exdate])
+
     def __iter__(self):
         return self
 
@@ -173,9 +183,10 @@ class EventRecurDaysIter(object):
                 event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
     def __next__(self):
-        if self.is_count:
-            return self.next_count()
-        return self.next_until()
+        current = self.next_count() if self.is_count else self.next_until()
+        while current[0] in self.exclude:
+            current = self.next_count() if self.is_count else self.next_until()
+        return current
 
 
 class EventRecurMonthlyIter(object):
