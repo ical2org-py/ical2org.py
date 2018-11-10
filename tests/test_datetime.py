@@ -46,7 +46,7 @@ def test_org_date(dt, tz, expected):
         (datetime(2017, 12, 15, 18, 35, 0, 0, PRAGUE), PRAGUE,
          datetime(2017, 12, 15, 18, 35, 0, 0, PRAGUE)),
         (datetime(2017, 12, 15, 17, 35, 0, 0), PRAGUE,
-         datetime(2017, 12, 15, 17, 35, 0, 0)),
+         datetime(2017, 12, 15, 17, 35, 0, 0, PRAGUE)),
         (date(2017, 12, 15), PRAGUE,
          datetime(2017, 12, 15, 1, 0, 0, 0, PRAGUE)),
     ],
