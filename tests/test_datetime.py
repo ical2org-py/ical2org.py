@@ -5,7 +5,7 @@ from datetime import date, datetime
 import pytest
 from pytz import timezone, utc
 
-from ical2orgpy import orgDatetime, orgDate, get_datetime
+from ical2orgpy import org_datetime, org_date, get_datetime
 
 # Timezone in Prague
 PRAGUE = timezone("Europe/Prague")
@@ -22,7 +22,7 @@ UTC = timezone("UTC")
     ],
     ids=lambda itm: str(itm))
 def test_org_datetime(dt, tz, expected):
-    res = orgDatetime(dt, tz)
+    res = org_datetime(dt, tz)
     assert res == expected
 
 
@@ -35,7 +35,7 @@ def test_org_datetime(dt, tz, expected):
     ],
     ids=lambda itm: str(itm))
 def test_org_date(dt, tz, expected):
-    res = orgDate(dt, tz)
+    res = org_date(dt, tz)
     assert res == expected
 
 

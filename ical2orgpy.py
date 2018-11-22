@@ -10,14 +10,12 @@ from tzlocal import get_localzone
 import click
 import itertools
 
-
-def orgDatetime(dt, tz):
+def org_datetime(dt, tz):
     '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
     '''
     return dt.astimezone(tz).strftime("<%Y-%m-%d %a %H:%M>")
 
-
-def orgDate(dt, tz):
+def org_date(dt, tz):
     '''Timezone aware date to YYYY-MM-DD DayofWeek in localtime.
     '''
     return dt.astimezone(tz).strftime("<%Y-%m-%d %a>")
@@ -298,12 +296,12 @@ class Convertor(object):
                     fh_w.write(u"\n")
                     if isinstance(comp["DTSTART"].dt, datetime):
                         fh_w.write(u"  {}--{}\n".format(
-                            orgDatetime(comp_start, self.tz),
-                            orgDatetime(comp_end, self.tz)))
+                            org_datetime(comp_start, self.tz),
+                            org_datetime(comp_end, self.tz)))
                     else:  # all day event
                         fh_w.write(u"  {}--{}\n".format(
-                            orgDate(comp_start, self.tz),
-                            orgDate(comp_end - timedelta(days=1), self.tz)))
+                            org_date(comp_start, self.tz),
+                            org_date(comp_end - timedelta(days=1), self.tz)))
                     if 'DESCRIPTION' in comp:
                         description = '\n'.join(comp['DESCRIPTION'].to_ical()
                                                 .decode("utf-8").split('\\n'))
