@@ -57,7 +57,7 @@ def advance_just_before(start_dt, timeframe_start, delta_days):
         start_dt, timedelta(days=delta_days * int(delta_ord))), int(delta_ord))
 
 
-def generate_event_iterator(comp, timeframe_start, timeframe_end, tz):
+def generate_events(comp, timeframe_start, timeframe_end, tz):
     '''Get iterator with the proper delta (days, weeks, etc)'''
     # Note: timeframe_start and timeframe_end are in UTC
     if comp.name != 'VEVENT':
@@ -65,18 +65,18 @@ def generate_event_iterator(comp, timeframe_start, timeframe_end, tz):
     if 'RRULE' in comp:
         return {
             'WEEKLY':
-            EventRecurDaysIter(7, comp, timeframe_start, timeframe_end, tz),
+            DailyEvents(7, comp, timeframe_start, timeframe_end, tz),
             'DAILY':
-            EventRecurDaysIter(1, comp, timeframe_start, timeframe_end, tz),
+            DailyEvents(1, comp, timeframe_start, timeframe_end, tz),
             'MONTHLY': [],
             'YEARLY':
-            EventRecurYearlyIter(comp, timeframe_start, timeframe_end, tz)
+            YearlyEvents(comp, timeframe_start, timeframe_end, tz)
         }[comp['RRULE']['FREQ'][0]]
     else:
-        return EventSingleIter(comp, timeframe_start, timeframe_end, tz)
+        return SingleEvent(comp, timeframe_start, timeframe_end, tz)
 
 
-class EventSingleIter(object):
+class SingleEvent(object):
     '''Iterator for non-recurring single events.'''
 
     def __init__(self, comp, timeframe_start, timeframe_end, tz):
@@ -90,27 +90,61 @@ class EventSingleIter(object):
             self.ev_end = get_datetime(comp['DTEND'].dt, tz)
 
         self.duration = self.ev_end - self.ev_start
-        self.result = ()
+        self.events = []
         if (self.ev_start < timeframe_end and self.ev_end > timeframe_start):
-            self.result = (self.ev_start, self.ev_end, 0)
+            self.events = [(self.ev_start, self.ev_end, 0)]
 
     def __iter__(self):
-        return self
+        return iter(self.events)
 
-    # Iterate just once
-    def __next__(self):
-        if self.result:
-            aux = self.result
-            self.result = ()
+def filter_events(events, comp, tz):
+    exclude = set()
+    if 'EXDATE' in comp:
+        exdate = comp['EXDATE']
+        if isinstance(exdate, list):
+            exdate = itertools.chain.from_iterable([e.dts for e in exdate])
         else:
-            raise StopIteration
-        return aux
+            exdate = exdate.dts
+        exclude = set([get_datetime(dt.dt, tz) for dt in exdate])
+    filtered_events = list()
+    for ev in events:
+        if ev in exclude:
+            continue
+        filtered_events.append(ev)
+    return filtered_events
 
+class DailyEvents(object):
+    '''Class for daily-based recurring events (daily, weekly).'''
 
-class EventRecurDaysIter(object):
-    '''Iterator for daily-based recurring events (daily, weekly).'''
+    def populate(self, timeframe_start, timeframe_end):
+        '''Populate all events that fall into timeframe.'''
+        if self.until_utc < timeframe_start:
+            return list()
+        self.until_utc = min(self.until_utc, timeframe_end)
+        if self.ev_start < timeframe_start:
+            # advance to timeframe start
+            (self.current, counts) = advance_just_before(
+                self.ev_start, timeframe_start, self.delta_days)
+            if self.is_count:
+                self.count -= counts
+                if self.count < 1:
+                    return list()
+            while self.current < timeframe_start:
+                self.current = add_delta_dst(self.current, self.delta)
+        else:
+            self.current = self.ev_start
+        events = list()
+        while self.current <= self.until_utc:
+            events.append(self.current)
+            self.current = add_delta_dst(self.current, self.delta)
+            if self.is_count:
+                self.count -= 1
+                if self.count < 1:
+                    break
+        return events
 
     def __init__(self, days, comp, timeframe_start, timeframe_end, tz):
+        self.events = list()
         self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
         if "DTEND" not in comp:
             self.ev_end = self.ev_start
@@ -121,10 +155,10 @@ class EventRecurDaysIter(object):
         if 'COUNT' in comp['RRULE']:
             self.is_count = True
             self.count = comp['RRULE']['COUNT'][0]
-        delta_days = days
+        self.delta_days = days
         if 'INTERVAL' in comp['RRULE']:
-            delta_days *= comp['RRULE']['INTERVAL'][0]
-        self.delta = timedelta(delta_days)
+            self.delta_days *= comp['RRULE']['INTERVAL'][0]
+        self.delta = timedelta(self.delta_days)
         if 'UNTIL' in comp['RRULE']:
             if self.is_count:
                 msg = "UNTIL and COUNT MUST NOT occur in the same 'recur'"
@@ -134,64 +168,20 @@ class EventRecurDaysIter(object):
         else:
             self.until_utc = timeframe_end
         if self.until_utc < timeframe_start:
-            # Default value for no iteration
-            self.current = self.until_utc + self.delta
             return
         self.until_utc = min(self.until_utc, timeframe_end)
-        if self.ev_start < timeframe_start:
-            # advance to timeframe start
-            (self.current, counts) = advance_just_before(
-                self.ev_start, timeframe_start, delta_days)
-            if self.is_count:
-                self.count -= counts
-                if self.count < 1:
-                    return
-            while self.current < timeframe_start:
-                self.current = add_delta_dst(self.current, self.delta)
-        else:
-            self.current = self.ev_start
-
-        self.exclude = set()
-        if 'EXDATE' in comp:
-            exdate = comp['EXDATE']
-            if isinstance(exdate, list):
-                exdate = itertools.chain.from_iterable([e.dts for e in exdate])
-            else:
-                exdate = exdate.dts
-            self.exclude = set([get_datetime(dt.dt, tz) for dt in exdate])
+        events = self.populate(timeframe_start, timeframe_end)
+        self.events = [(event, event.tzinfo.normalize(event + self.duration), 1) for event in filter_events(events, comp, tz)]
 
     def __iter__(self):
-        return self
+        return iter(self.events)
 
-    def next_until(self):
-        if self.current > self.until_utc:
-            raise StopIteration
-        event_aux = self.current
-        self.current = add_delta_dst(self.current, self.delta)
-        return (event_aux,
-                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
-
-    def next_count(self):
-        if self.count < 1:
-            raise StopIteration
-        self.count -= 1
-        event_aux = self.current
-        self.current = add_delta_dst(self.current, self.delta)
-        return (event_aux,
-                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
-
-    def __next__(self):
-        current = self.next_count() if self.is_count else self.next_until()
-        while current[0] in self.exclude:
-            current = self.next_count() if self.is_count else self.next_until()
-        return current
-
-
-class EventRecurMonthlyIter(object):
+class MonthlyEvents(object):
+    '''TODO: Class for monthly recurring events.'''
     pass
 
-
-class EventRecurYearlyIter(object):
+class YearlyEvents(object):
+    '''Class for yearly recurring events.'''
     def __init__(self, comp, timeframe_start, timeframe_end, tz):
         self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
         if "DTEND" not in comp:
@@ -247,10 +237,8 @@ class EventRecurYearlyIter(object):
         return (event_aux,
                 event_aux.tzinfo.normalize(event_aux + self.duration), 1)
 
-
 class IcalParsingError(Exception):
     pass
-
 
 class Convertor(object):
     RECUR_TAG = ":RECURRING:"
@@ -293,8 +281,8 @@ class Convertor(object):
                                         .decode("utf-8").split('\\n'))
                 description = description.replace('\\,', ',')
             try:
-                event_iter = generate_event_iterator(comp, start, end, self.tz)
-                for comp_start, comp_end, rec_event in event_iter:
+                events = generate_events(comp, start, end, self.tz)
+                for comp_start, comp_end, rec_event in events:
                     fh_w.write(u"* {}".format(summary))
                     if rec_event and self.RECUR_TAG:
                         fh_w.write(u" {}\n".format(self.RECUR_TAG))
@@ -315,7 +303,6 @@ class Convertor(object):
                 warnings.warn(msg)
                 raise
 
-
 def check_timezone(ctx, param, value):
     if (value is None) or (value in all_timezones):
         return value
@@ -323,7 +310,6 @@ def check_timezone(ctx, param, value):
         click.echo(u"Invalid timezone value {value}.".format(value=value))
         click.echo(u"Use --print-timezones to show acceptable values.")
         ctx.exit(1)
-
 
 def print_timezones(ctx, param, value):
     if not value or ctx.resilient_parsing:
