@@ -275,21 +275,26 @@ class Convertor(object):
         start = now - timedelta(days=self.days)
         end = now + timedelta(days=self.days)
         for comp in cal.walk():
+            summary = None
+            if "SUMMARY" in comp:
+                summary = comp['SUMMARY'].to_ical().decode("utf-8")
+                summary = summary.replace('\\,', ',')
+            location = None
+            if "LOCATION" in comp:
+                location = comp['LOCATION'].to_ical().decode("utf-8")
+                location = location.replace('\\,', ',')
+            if not any((summary, location)):
+                summary = u"(No title)"
+            else:
+                summary += " - " + location if location else ''
+            description = None
+            if 'DESCRIPTION' in comp:
+                description = '\n'.join(comp['DESCRIPTION'].to_ical()
+                                        .decode("utf-8").split('\\n'))
+                description = description.replace('\\,', ',')
             try:
                 event_iter = generate_event_iterator(comp, start, end, self.tz)
                 for comp_start, comp_end, rec_event in event_iter:
-                    summary = ""
-                    if "SUMMARY" in comp:
-                        summary = comp['SUMMARY'].to_ical().decode("utf-8")
-                        summary = summary.replace('\\,', ',')
-                    location = ""
-                    if "LOCATION" in comp:
-                        location = comp['LOCATION'].to_ical().decode("utf-8")
-                        location = location.replace('\\,', ',')
-                    if not any((summary, location)):
-                        summary = u"(No title)"
-                    else:
-                        summary += " - " + location if location else ''
                     fh_w.write(u"* {}".format(summary))
                     if rec_event and self.RECUR_TAG:
                         fh_w.write(u" {}\n".format(self.RECUR_TAG))
@@ -302,12 +307,8 @@ class Convertor(object):
                         fh_w.write(u"  {}--{}\n".format(
                             org_date(comp_start, self.tz),
                             org_date(comp_end - timedelta(days=1), self.tz)))
-                    if 'DESCRIPTION' in comp:
-                        description = '\n'.join(comp['DESCRIPTION'].to_ical()
-                                                .decode("utf-8").split('\\n'))
-                        description = description.replace('\\,', ',')
+                    if description:
                         fh_w.write(u"{}\n".format(description))
-
                     fh_w.write(u"\n")
             except Exception as e:
                 msg = "Warning: an exception occured: %s" % e
