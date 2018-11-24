@@ -171,7 +171,8 @@ class DailyEvents(object):
             return
         self.until_utc = min(self.until_utc, timeframe_end)
         events = self.populate(timeframe_start, timeframe_end)
-        self.events = [(event, event.tzinfo.normalize(event + self.duration), 1) for event in filter_events(events, comp, tz)]
+        self.events = [(event, event.tzinfo.normalize(event + self.duration), 1)
+                       for event in filter_events(events, comp, tz)]
 
     def __iter__(self):
         return iter(self.events)
@@ -182,60 +183,56 @@ class MonthlyEvents(object):
 
 class YearlyEvents(object):
     '''Class for yearly recurring events.'''
+
     def __init__(self, comp, timeframe_start, timeframe_end, tz):
-        self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
+        ev_start = get_datetime(comp['DTSTART'].dt, tz)
         if "DTEND" not in comp:
-            self.ev_end = self.ev_start
+            ev_end = ev_start
         else:
-            self.ev_end = get_datetime(comp['DTEND'].dt, tz)
-        self.start = timeframe_start
-        self.end = timeframe_end
-        self.is_until = False
+            ev_end = get_datetime(comp['DTEND'].dt, tz)
+        start = timeframe_start
+        end = timeframe_end
+        is_until = False
         if 'UNTIL' in comp['RRULE']:
-            self.is_until = True
-            self.end = min(self.end,
+            is_until = True
+            end = min(end,
                            get_datetime(comp['RRULE']['UNTIL'][0],
                                         tz).astimezone(utc))
-        if self.end < self.start:
-            # Default values for no iteration
-            self.i = 0
-            self.n = 0
+        if end < start:
+            self.events = list()
             return
         if 'BYMONTH' in comp['RRULE']:
-            self.bymonth = comp['RRULE']['BYMONTH'][0]
+            bymonth = comp['RRULE']['BYMONTH'][0]
         else:
-            self.bymonth = self.ev_start.month
+            bymonth = ev_start.month
         if 'BYMONTHDAY' in comp['RRULE']:
-            self.bymonthday = comp['RRULE']['BYMONTHDAY'][0]
+            bymonthday = comp['RRULE']['BYMONTHDAY'][0]
         else:
-            self.bymonthday = self.ev_start.day
-        self.duration = self.ev_end - self.ev_start
-        self.years = list(range(self.start.year, self.end.year + 1))
+            bymonthday = ev_start.day
+        duration = ev_end - ev_start
+        # populate
+        years = list(range(start.year, end.year + 1))
         if 'COUNT' in comp['RRULE']:
-            if self.is_until:
+            if is_until:
                 msg = "UNTIL and COUNT MUST NOT occur in the same 'recur'"
                 raise ValueError(msg)
-            self.years = list(range(self.ev_start.year, self.end.year + 1))
-            del self.years[comp['RRULE']['COUNT'][0]:]
-        self.i = 0
-        self.n = len(self.years)
+            years = list(range(ev_start.year, end.year + 1))
+            del years[comp['RRULE']['COUNT'][0]:]
+        events = list()
+        for year in years:
+            event = ev_start.replace(year=year)
+            event = event.replace(month=bymonth)
+            event = event.replace(day=bymonthday)
+            if event > end:
+                break
+            if event < start:
+                continue
+            events.append(event)
+        self.events = [(event, event.tzinfo.normalize(event + duration), 1)
+                       for event in filter_events(events, comp, tz)]
 
     def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.i >= self.n:
-            raise StopIteration
-        event_aux = self.ev_start.replace(year=self.years[self.i])
-        event_aux = event_aux.replace(month=self.bymonth)
-        event_aux = event_aux.replace(day=self.bymonthday)
-        self.i = self.i + 1
-        if event_aux > self.end:
-            raise StopIteration
-        if event_aux < self.start:
-            return next(self)
-        return (event_aux,
-                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
+        return iter(self.events)
 
 class IcalParsingError(Exception):
     pass
