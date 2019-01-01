@@ -28,7 +28,7 @@ def get_datetime(dt, tz):
     '''
     if isinstance(dt, datetime):
         if not dt.tzinfo:
-            return dt.replace(tzinfo = tz)
+            return dt.replace(tzinfo=tz)
         return dt
     else:
         # d is date. Being a naive date, let's suppose it is in local
@@ -55,8 +55,9 @@ def advance_just_before(start_dt, timeframe_start, delta_days):
     delta = timedelta(days=delta_days)
     delta_ord = floor(
         (timeframe_start.toordinal() - start_dt.toordinal() - 1) / delta_days)
-    return (add_delta_dst(
-        start_dt, timedelta(days=delta_days * int(delta_ord))), int(delta_ord))
+    return (add_delta_dst(start_dt,
+                          timedelta(days=delta_days * int(delta_ord))),
+            int(delta_ord))
 
 
 def generate_event_iterator(comp, timeframe_start, timeframe_end, tz):
@@ -205,9 +206,9 @@ class EventRecurYearlyIter(object):
         self.is_until = False
         if 'UNTIL' in comp['RRULE']:
             self.is_until = True
-            self.end = min(self.end,
-                           get_datetime(comp['RRULE']['UNTIL'][0],
-                                        tz).astimezone(utc))
+            self.end = min(
+                self.end,
+                get_datetime(comp['RRULE']['UNTIL'][0], tz).astimezone(utc))
         if self.end < self.start:
             # Default values for no iteration
             self.i = 0
@@ -305,8 +306,8 @@ class Convertor(object):
                             orgDate(comp_start, self.tz),
                             orgDate(comp_end - timedelta(days=1), self.tz)))
                     if 'DESCRIPTION' in comp:
-                        description = '\n'.join(comp['DESCRIPTION'].to_ical()
-                                                .decode("utf-8").split('\\n'))
+                        description = '\n'.join(comp['DESCRIPTION'].to_ical().
+                                                decode("utf-8").split('\\n'))
                         description = description.replace('\\,', ',')
                         fh_w.write(u"{}\n".format(description))
 
