@@ -2,6 +2,7 @@ from __future__ import print_function
 from builtins import object
 import warnings
 import sys
+from dateutil.rrule import rrulestr, rruleset
 from math import floor
 from datetime import date, datetime, timedelta, tzinfo
 from icalendar import Calendar
@@ -66,17 +67,9 @@ def generate_event_iterator(comp, timeframe_start, timeframe_end, tz):
     if comp.name != 'VEVENT':
         return []
     if 'RRULE' in comp:
-        return {
-            'WEEKLY':
-            EventRecurDaysIter(7, comp, timeframe_start, timeframe_end, tz),
-            'DAILY':
-            EventRecurDaysIter(1, comp, timeframe_start, timeframe_end, tz),
-            'MONTHLY': [],
-            'YEARLY':
-            EventRecurYearlyIter(comp, timeframe_start, timeframe_end, tz)
-        }[comp['RRULE']['FREQ'][0]]
-    else:
-        return EventSingleIter(comp, timeframe_start, timeframe_end, tz)
+        return EventRecur(comp, timeframe_start, timeframe_end, tz)
+
+    return EventSingleIter(comp, timeframe_start, timeframe_end, tz)
 
 
 class EventSingleIter(object):
@@ -110,49 +103,21 @@ class EventSingleIter(object):
         return aux
 
 
-class EventRecurDaysIter(object):
+class EventRecur(object):
     '''Iterator for daily-based recurring events (daily, weekly).'''
 
-    def __init__(self, days, comp, timeframe_start, timeframe_end, tz):
+    def __init__(self, comp, timeframe_start, timeframe_end, tz):
         self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
         if "DTEND" not in comp:
             self.ev_end = self.ev_start
         else:
             self.ev_end = get_datetime(comp['DTEND'].dt, tz)
         self.duration = self.ev_end - self.ev_start
-        self.is_count = False
-        if 'COUNT' in comp['RRULE']:
-            self.is_count = True
-            self.count = comp['RRULE']['COUNT'][0]
-        delta_days = days
-        if 'INTERVAL' in comp['RRULE']:
-            delta_days *= comp['RRULE']['INTERVAL'][0]
-        self.delta = timedelta(delta_days)
-        if 'UNTIL' in comp['RRULE']:
-            if self.is_count:
-                msg = "UNTIL and COUNT MUST NOT occur in the same 'recur'"
-                raise ValueError(msg)
-            self.until_utc = get_datetime(comp['RRULE']['UNTIL'][0],
-                                          tz).astimezone(utc)
-        else:
-            self.until_utc = timeframe_end
-        if self.until_utc < timeframe_start:
-            # Default value for no iteration
-            self.current = self.until_utc + self.delta
-            return
-        self.until_utc = min(self.until_utc, timeframe_end)
-        if self.ev_start < timeframe_start:
-            # advance to timeframe start
-            (self.current, counts) = advance_just_before(
-                self.ev_start, timeframe_start, delta_days)
-            if self.is_count:
-                self.count -= counts
-                if self.count < 1:
-                    return
-            while self.current < timeframe_start:
-                self.current = add_delta_dst(self.current, self.delta)
-        else:
-            self.current = self.ev_start
+
+        self.recurrences = rrulestr(
+            comp["RRULE"].to_ical().decode("utf-8"), dtstart=self.ev_start)
+        self.rules = rruleset()
+        self.rules.rrule(self.recurrences)
 
         self.exclude = set()
         if 'EXDATE' in comp:
@@ -163,92 +128,20 @@ class EventRecurDaysIter(object):
                 exdate = exdate.dts
             self.exclude = set([get_datetime(dt.dt, tz) for dt in exdate])
 
-    def __iter__(self):
-        return self
+            for skip in self.exclude:
+                self.rules.exdate(skip)
 
-    def next_until(self):
-        if self.current > self.until_utc:
-            raise StopIteration
-        event_aux = self.current
-        self.current = add_delta_dst(self.current, self.delta)
-        return (event_aux,
-                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
-
-    def next_count(self):
-        if self.count < 1:
-            raise StopIteration
-        self.count -= 1
-        event_aux = self.current
-        self.current = add_delta_dst(self.current, self.delta)
-        return (event_aux,
-                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
-
-    def __next__(self):
-        current = self.next_count() if self.is_count else self.next_until()
-        while current[0] in self.exclude:
-            current = self.next_count() if self.is_count else self.next_until()
-        return current
-
-
-class EventRecurMonthlyIter(object):
-    pass
-
-
-class EventRecurYearlyIter(object):
-    def __init__(self, comp, timeframe_start, timeframe_end, tz):
-        self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
-        if "DTEND" not in comp:
-            self.ev_end = self.ev_start
-        else:
-            self.ev_end = get_datetime(comp['DTEND'].dt, tz)
-        self.start = timeframe_start
-        self.end = timeframe_end
-        self.is_until = False
-        if 'UNTIL' in comp['RRULE']:
-            self.is_until = True
-            self.end = min(
-                self.end,
-                get_datetime(comp['RRULE']['UNTIL'][0], tz).astimezone(utc))
-        if self.end < self.start:
-            # Default values for no iteration
-            self.i = 0
-            self.n = 0
-            return
-        if 'BYMONTH' in comp['RRULE']:
-            self.bymonth = comp['RRULE']['BYMONTH'][0]
-        else:
-            self.bymonth = self.ev_start.month
-        if 'BYMONTHDAY' in comp['RRULE']:
-            self.bymonthday = comp['RRULE']['BYMONTHDAY'][0]
-        else:
-            self.bymonthday = self.ev_start.day
-        self.duration = self.ev_end - self.ev_start
-        self.years = list(range(self.start.year, self.end.year + 1))
-        if 'COUNT' in comp['RRULE']:
-            if self.is_until:
-                msg = "UNTIL and COUNT MUST NOT occur in the same 'recur'"
-                raise ValueError(msg)
-            self.years = list(range(self.ev_start.year, self.end.year + 1))
-            del self.years[comp['RRULE']['COUNT'][0]:]
-        self.i = 0
-        self.n = len(self.years)
+        self.events = self.rules.between(timeframe_start, timeframe_end)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.i >= self.n:
-            raise StopIteration
-        event_aux = self.ev_start.replace(year=self.years[self.i])
-        event_aux = event_aux.replace(month=self.bymonth)
-        event_aux = event_aux.replace(day=self.bymonthday)
-        self.i = self.i + 1
-        if event_aux > self.end:
-            raise StopIteration
-        if event_aux < self.start:
-            return next(self)
-        return (event_aux,
-                event_aux.tzinfo.normalize(event_aux + self.duration), 1)
+        if self.events:
+            current = self.events.pop()
+            return (current,
+                    current.tzinfo.normalize(current+self.duration),1)
+        raise StopIteration
 
 
 class IcalParsingError(Exception):
