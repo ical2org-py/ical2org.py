@@ -94,18 +94,18 @@ class SingleEvent(object):
     '''Iterator for non-recurring single events.'''
 
     def __init__(self, comp, timeframe_start, timeframe_end, tz):
-        self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
+        ev_start = get_datetime(comp['DTSTART'].dt, tz)
         # Events with the same begin/end time same do not include
         # "DTEND".
         if "DTEND" not in comp:
-            self.ev_end = self.ev_start
+            ev_end = ev_start
         else:
-            self.ev_end = get_datetime(comp['DTEND'].dt, tz)
-        self.duration = self.ev_end - self.ev_start
+            ev_end = get_datetime(comp['DTEND'].dt, tz)
+        self.duration = ev_end - ev_start
         self.events = []
-        if (self.ev_start < timeframe_end and self.ev_end > timeframe_start):
-            self.events = [(self.ev_start, self.ev_end, 0)]
-
+        if (ev_start < timeframe_end and ev_end > timeframe_start):
+            self.events = [(ev_start, ev_end, 0)
+                           for ev_start in filter_events([ev_start], comp, tz)]
     def __iter__(self):
         return iter(self.events)
 
@@ -119,20 +119,20 @@ class DailyEvents(object):
         self.until_utc = min(self.until_utc, timeframe_end)
         if self.ev_start < timeframe_start:
             # advance to timeframe start
-            (self.current, counts) = advance_just_before(
+            (current, counts) = advance_just_before(
                 self.ev_start, timeframe_start, self.delta_days)
             if self.is_count:
                 self.count -= counts
                 if self.count < 1:
                     return []
-            while self.current < timeframe_start:
-                self.current = add_delta_dst(self.current, self.delta)
+            while current < timeframe_start:
+                current = add_delta_dst(current, self.delta)
         else:
-            self.current = self.ev_start
+            current = self.ev_start
         events = []
-        while self.current <= self.until_utc:
-            events.append(self.current)
-            self.current = add_delta_dst(self.current, self.delta)
+        while current <= self.until_utc:
+            events.append(current)
+            current = add_delta_dst(current, self.delta)
             if self.is_count:
                 self.count -= 1
                 if self.count < 1:
