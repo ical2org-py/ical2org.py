@@ -53,7 +53,7 @@ def advance_just_before(start_dt, timeframe_start, delta_days):
     return (add_delta_dst(
         start_dt, timedelta(days=delta_days * int(delta_ord))), int(delta_ord))
 
-def generate_events(comp, timeframe_start, timeframe_end, tz):
+def generate_events(comp, timeframe_start, timeframe_end, tz, emails):
     '''Get iterator with the proper delta (days, weeks, etc)'''
     # Note: timeframe_start and timeframe_end are in UTC
     if comp.name != 'VEVENT':
@@ -61,21 +61,25 @@ def generate_events(comp, timeframe_start, timeframe_end, tz):
     if 'RRULE' in comp:
         return {
             'WEEKLY':
-            DailyEvents(7, comp, timeframe_start, timeframe_end, tz),
+            DailyEvents(7, comp, timeframe_start, timeframe_end, tz, emails),
             'DAILY':
-            DailyEvents(1, comp, timeframe_start, timeframe_end, tz),
+            DailyEvents(1, comp, timeframe_start, timeframe_end, tz, emails),
             'MONTHLY': [],
             'YEARLY':
-            YearlyEvents(comp, timeframe_start, timeframe_end, tz)
+            YearlyEvents(comp, timeframe_start, timeframe_end, tz, emails)
         }[comp['RRULE']['FREQ'][0]]
     else:
-        return SingleEvent(comp, timeframe_start, timeframe_end, tz)
+        return SingleEvent(comp, timeframe_start, timeframe_end, tz, emails)
 
-def filter_events(events, comp, tz):
+def filter_events(events, comp, tz, emails):
     '''Given a set of events (datetime objects), filter out some of them according to rules in comp.
     @return remaining events
     '''
     exclude = set()
+    # filter out whole event series if one attendee is in emails and his status is declined
+    for att in comp.get('ATTENDEE', []):
+        if att.params.get('PARTSTAT', '') == 'DECLINED' and att.params.get('CN', '') in emails:
+            return []
     if 'EXDATE' in comp:
         exdate = comp['EXDATE']
         if isinstance(exdate, list):
@@ -93,7 +97,7 @@ def filter_events(events, comp, tz):
 class SingleEvent(object):
     '''Iterator for non-recurring single events.'''
 
-    def __init__(self, comp, timeframe_start, timeframe_end, tz):
+    def __init__(self, comp, timeframe_start, timeframe_end, tz, emails):
         ev_start = get_datetime(comp['DTSTART'].dt, tz)
         # Events with the same begin/end time same do not include
         # "DTEND".
@@ -105,7 +109,7 @@ class SingleEvent(object):
         self.events = []
         if (ev_start < timeframe_end and ev_end > timeframe_start):
             self.events = [(ev_start, ev_end, 0)
-                           for ev_start in filter_events([ev_start], comp, tz)]
+                           for ev_start in filter_events([ev_start], comp, tz, emails)]
     def __iter__(self):
         return iter(self.events)
 
@@ -139,7 +143,7 @@ class DailyEvents(object):
                     break
         return events
 
-    def __init__(self, days, comp, timeframe_start, timeframe_end, tz):
+    def __init__(self, days, comp, timeframe_start, timeframe_end, tz, emails):
         uid = comp.get('UID', '**NOID**')
         self.events = list()
         self.ev_start = get_datetime(comp['DTSTART'].dt, tz)
@@ -169,7 +173,7 @@ class DailyEvents(object):
         self.until_utc = min(self.until_utc, timeframe_end)
         events = self.populate(timeframe_start, timeframe_end)
         self.events = [(event, event.tzinfo.normalize(event + self.duration), 1)
-                       for event in filter_events(events, comp, tz)]
+                       for event in filter_events(events, comp, tz, emails)]
 
     def __iter__(self):
         return iter(self.events)
@@ -181,7 +185,7 @@ class MonthlyEvents(object):
 class YearlyEvents(object):
     '''Class for yearly recurring events.'''
 
-    def __init__(self, comp, timeframe_start, timeframe_end, tz):
+    def __init__(self, comp, timeframe_start, timeframe_end, tz, emails):
         uid = comp.get('UID', '**NOID**')
         ev_start = get_datetime(comp['DTSTART'].dt, tz)
         if "DTEND" not in comp:
@@ -227,7 +231,7 @@ class YearlyEvents(object):
                 continue
             events.append(event)
         self.events = [(event, event.tzinfo.normalize(event + duration), 1)
-                       for event in filter_events(events, comp, tz)]
+                       for event in filter_events(events, comp, tz, emails)]
 
     def __iter__(self):
         return iter(self.events)
@@ -240,10 +244,11 @@ class Convertor(object):
 
     # Do not change anything below
 
-    def __init__(self, days=90, tz=None):
+    def __init__(self, emails, days=90, tz=None):
         """days: Window length in days (left & right from current time). Has
         to be positive.
         """
+        self.emails = set(emails)
         self.tz = timezone(tz) if tz else get_localzone()
         self.days = days
 
@@ -276,7 +281,7 @@ class Convertor(object):
                                         .decode("utf-8").split('\\n'))
                 description = description.replace('\\,', ',')
             try:
-                events = generate_events(comp, start, end, self.tz)
+                events = generate_events(comp, start, end, self.tz, self.emails)
                 for comp_start, comp_end, rec_event in events:
                     fh_w.write(u"* {}".format(summary))
                     if rec_event and self.RECUR_TAG:
@@ -323,6 +328,12 @@ def print_timezones(ctx, param, value):
     expose_value=False,
     help="Print acceptable timezone names and exit.")
 @click.option(
+    "--emails",
+    "-e",
+    multiple=True,
+    default=None,
+    help="User email addresses (used to manage declined events). You can write multiple emails with as many -e options as you like.")
+@click.option(
     "--days",
     "-d",
     default=90,
@@ -337,7 +348,7 @@ def print_timezones(ctx, param, value):
     help="Timezone to use. (local timezone by default)")
 @click.argument("ics_file", type=click.File("r", encoding="utf-8"))
 @click.argument("org_file", type=click.File("w", encoding="utf-8"))
-def main(ics_file, org_file, days, timezone):
+def main(ics_file, org_file, emails, days, timezone):
     """Convert ICAL format into org-mode.
 
     Files can be set as explicit file name, or `-` for stdin or stdout::
@@ -350,7 +361,7 @@ def main(ics_file, org_file, days, timezone):
 
         $ cat in.ical | ical2orgpy - - > out.org
     """
-    convertor = Convertor(days, timezone)
+    convertor = Convertor(emails, days, timezone)
     try:
         convertor(ics_file, org_file)
     except IcalError as e:
