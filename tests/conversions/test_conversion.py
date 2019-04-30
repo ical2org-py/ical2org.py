@@ -34,7 +34,7 @@ class Scenario(object):
         assert self.expected_file.exists()
 
         with cfg_file.open("r", encoding="utf-8") as f:
-            self.cfg = yaml.load(f)
+            self.cfg = yaml.load(f, Loader=yaml.FullLoader)
 
         self.desciption = self.cfg["description"]
         """Test case description"""
