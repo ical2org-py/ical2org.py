@@ -244,9 +244,12 @@ class Convertor(object):
 
     # Do not change anything below
 
-    def __init__(self, emails, days=90, tz=None):
-        """days: Window length in days (left & right from current time). Has
+    def __init__(self, days=90, tz=None, emails = []):
+        """
+        days: Window length in days (left & right from current time). Has
         to be positive.
+        tz: timezone. If None, use local timezone.
+        emails: list of user email addresses (to deal with declined events)
         """
         self.emails = set(emails)
         self.tz = timezone(tz) if tz else get_localzone()
@@ -328,11 +331,11 @@ def print_timezones(ctx, param, value):
     expose_value=False,
     help="Print acceptable timezone names and exit.")
 @click.option(
-    "--emails",
+    "--email",
     "-e",
     multiple=True,
     default=None,
-    help="User email addresses (used to manage declined events). You can write multiple emails with as many -e options as you like.")
+    help="User email address (used to deal with declined events). You can write multiple emails with as many -e options as you like.")
 @click.option(
     "--days",
     "-d",
@@ -348,7 +351,7 @@ def print_timezones(ctx, param, value):
     help="Timezone to use. (local timezone by default)")
 @click.argument("ics_file", type=click.File("r", encoding="utf-8"))
 @click.argument("org_file", type=click.File("w", encoding="utf-8"))
-def main(ics_file, org_file, emails, days, timezone):
+def main(ics_file, org_file, email, days, timezone):
     """Convert ICAL format into org-mode.
 
     Files can be set as explicit file name, or `-` for stdin or stdout::
@@ -361,7 +364,7 @@ def main(ics_file, org_file, emails, days, timezone):
 
         $ cat in.ical | ical2orgpy - - > out.org
     """
-    convertor = Convertor(emails, days, timezone)
+    convertor = Convertor(days, timezone, email)
     try:
         convertor(ics_file, org_file)
     except IcalError as e:

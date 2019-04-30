@@ -1,0 +1,9 @@
+description: Test declined event
+context:
+    ctime: 2019-04-30T20:35:51
+    is_dst: true
+    tzone: Europe/Prague
+parameters:
+    tzone: Europe/Prague
+    days: 90
+    email: [a.soroa@email.com]
