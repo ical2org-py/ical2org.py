@@ -77,9 +77,13 @@ def filter_events(events, comp, tz, emails):
     '''
     exclude = set()
     # filter out whole event series if one attendee is in emails and his status is declined
-    for att in comp.get('ATTENDEE', []):
-        if att.params.get('PARTSTAT', '') == 'DECLINED' and att.params.get('CN', '') in emails:
-            return []
+    attL = comp.get('ATTENDEE', None)
+    if attL:
+        if not isinstance(attL, list):
+            attL = [attL]
+        for att in attL:
+            if att.params.get('PARTSTAT', '') == 'DECLINED' and att.params.get('CN', '') in emails:
+                return []
     if 'EXDATE' in comp:
         exdate = comp['EXDATE']
         if isinstance(exdate, list):
