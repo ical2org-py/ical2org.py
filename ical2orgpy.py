@@ -1,14 +1,11 @@
 from __future__ import print_function
-from builtins import object
-import warnings
-import sys
 from math import floor
-from datetime import date, datetime, timedelta, tzinfo
+from datetime import datetime, timedelta
+import itertools
 from icalendar import Calendar
 from pytz import timezone, utc, all_timezones
 from tzlocal import get_localzone
 import click
-import itertools
 
 def org_datetime(dt, tz):
     '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
@@ -27,14 +24,13 @@ def get_datetime(dt, tz):
         if not dt.tzinfo:
             return dt.replace(tzinfo = tz)
         return dt
-    else:
-        # d is date. Being a naive date, let's suppose it is in local
-        # timezone.  Unfortunately using the tzinfo argument of the standard
-        # datetime constructors ''does not work'' with pytz for many
-        # timezones, so create first a utc datetime, and convert to local
-        # timezone
-        aux_dt = datetime(year=dt.year, month=dt.month, day=dt.day, tzinfo=utc)
-        return aux_dt.astimezone(tz)
+    # d is date. Being a naive date, let's suppose it is in local
+    # timezone.  Unfortunately using the tzinfo argument of the standard
+    # datetime constructors ''does not work'' with pytz for many
+    # timezones, so create first a utc datetime, and convert to local
+    # timezone
+    aux_dt = datetime(year=dt.year, month=dt.month, day=dt.day, tzinfo=utc)
+    return aux_dt.astimezone(tz)
 
 def add_delta_dst(dt, delta):
     '''Add a timedelta to a datetime, adjusting DST when appropriate'''
@@ -47,7 +43,6 @@ def advance_just_before(start_dt, timeframe_start, delta_days):
     '''Advance an start_dt datetime to the first date just before
     timeframe_start. Use delta_days for advancing the event. Precond:
     start_dt < timeframe_start'''
-    delta = timedelta(days=delta_days)
     delta_ord = floor(
         (timeframe_start.toordinal() - start_dt.toordinal() - 1) / delta_days)
     return (add_delta_dst(
@@ -68,8 +63,7 @@ def generate_events(comp, timeframe_start, timeframe_end, tz, emails):
             'YEARLY':
             YearlyEvents(comp, timeframe_start, timeframe_end, tz, emails)
         }[comp['RRULE']['FREQ'][0]]
-    else:
-        return SingleEvent(comp, timeframe_start, timeframe_end, tz, emails)
+    return SingleEvent(comp, timeframe_start, timeframe_end, tz, emails)
 
 def filter_events(events, comp, tz, emails):
     '''Given a set of events (datetime objects), filter out some of them according to rules in comp.
@@ -90,7 +84,7 @@ def filter_events(events, comp, tz, emails):
             exdate = itertools.chain.from_iterable([e.dts for e in exdate])
         else:
             exdate = exdate.dts
-        exclude = set([get_datetime(dt.dt, tz) for dt in exdate])
+        exclude = set(get_datetime(dt.dt, tz) for dt in exdate)
     filtered_events = list()
     for ev in events:
         if ev in exclude:
@@ -98,7 +92,7 @@ def filter_events(events, comp, tz, emails):
         filtered_events.append(ev)
     return filtered_events
 
-class SingleEvent(object):
+class SingleEvent():
     '''Iterator for non-recurring single events.'''
 
     def __init__(self, comp, timeframe_start, timeframe_end, tz, emails):
@@ -117,7 +111,7 @@ class SingleEvent(object):
     def __iter__(self):
         return iter(self.events)
 
-class DailyEvents(object):
+class DailyEvents():
     '''Class for daily-based recurring events (daily, weekly).'''
 
     def populate(self, timeframe_start, timeframe_end):
@@ -182,11 +176,11 @@ class DailyEvents(object):
     def __iter__(self):
         return iter(self.events)
 
-class MonthlyEvents(object):
+class MonthlyEvents():
     '''TODO: Class for monthly recurring events.'''
     pass
 
-class YearlyEvents(object):
+class YearlyEvents():
     '''Class for yearly recurring events.'''
 
     def __init__(self, comp, timeframe_start, timeframe_end, tz, emails):
@@ -202,8 +196,8 @@ class YearlyEvents(object):
         if 'UNTIL' in comp['RRULE']:
             is_until = True
             end = min(end,
-                           get_datetime(comp['RRULE']['UNTIL'][0],
-                                        tz).astimezone(utc))
+                      get_datetime(comp['RRULE']['UNTIL'][0],
+                                   tz).astimezone(utc))
         if end < start:
             self.events = []
             return
@@ -243,7 +237,7 @@ class YearlyEvents(object):
 class IcalError(Exception):
     pass
 
-class Convertor(object):
+class Convertor():
     RECUR_TAG = ":RECURRING:"
 
     # Do not change anything below
@@ -313,10 +307,9 @@ class Convertor(object):
 def check_timezone(ctx, param, value):
     if (value is None) or (value in all_timezones):
         return value
-    else:
-        click.echo(u"Invalid timezone value {value}.".format(value=value))
-        click.echo(u"Use --print-timezones to show acceptable values.")
-        ctx.exit(1)
+    click.echo(u"Invalid timezone value {value}.".format(value=value))
+    click.echo(u"Use --print-timezones to show acceptable values.")
+    ctx.exit(1)
 
 def print_timezones(ctx, param, value):
     if not value or ctx.resilient_parsing:
