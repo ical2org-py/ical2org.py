@@ -295,8 +295,8 @@ class Convertor():
                             org_datetime(comp_end, self.tz)))
                     else:  # all day event
                         fh_w.write(u"  {}--{}\n".format(
-                            org_date(comp_start, self.tz),
-                            org_date(comp_end - timedelta(days=1), self.tz)))
+                            org_date(comp_start, timezone('UTC')),
+                            org_date(comp_end - timedelta(days=1), timezone('UTC'))))
                     if description:
                         fh_w.write(u"{}\n".format(description))
                     fh_w.write(u"\n")
