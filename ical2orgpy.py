@@ -339,7 +339,7 @@ def print_timezones(ctx, param, value):
     "-d",
     default=90,
     type=click.IntRange(0, clamp=True),
-    help=("Window length in days (left & right from current time). "
+    help=("Window length in days (left & right from current time. Default is 90 days). "
           "Has to be positive."))
 @click.option(
     "--timezone",
