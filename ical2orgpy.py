@@ -99,11 +99,15 @@ class SingleEvent():
         ev_start = get_datetime(comp['DTSTART'].dt, tz)
         # Events with the same begin/end time same do not include
         # "DTEND".
-        if "DTEND" not in comp:
-            ev_end = ev_start
-        else:
+        if "DTEND" in comp:
             ev_end = get_datetime(comp['DTEND'].dt, tz)
-        self.duration = ev_end - ev_start
+            self.duration = ev_end - ev_start
+        else:
+            if "DURATION" in comp:
+                self.duration = comp['DURATION'].dt
+                ev_end = ev_start + self.duration
+            else:
+                ev_end = ev_start
         self.events = []
         if (ev_start < timeframe_end and ev_end > timeframe_start):
             self.events = [(ev_start, ev_end, 0)
