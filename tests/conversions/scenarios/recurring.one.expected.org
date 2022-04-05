@@ -10,3 +10,9 @@
 * Buy Dragon Food :RECURRING:
   <2018-12-10 Mon 10:15>--<2018-12-10 Mon 10:30>
 
+* My birthday :RECURRING:
+  <2018-12-16 Sun>
+
+* Special conference :RECURRING:
+  <2018-12-17 Mon>
+
