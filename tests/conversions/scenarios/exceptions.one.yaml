@@ -1,0 +1,8 @@
+description: One event recurring monthly with exceptions
+context:
+    ctime: 2022-03-01T20:35:51
+    is_dst: true
+    tzone: Europe/London
+parameters:
+    tzone: Europe/London
+    days: 120
