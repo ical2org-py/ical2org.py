@@ -1,11 +1,11 @@
 """Test functions related to simple time conversions.
 """
-from datetime import date, datetime
+from datetime import datetime
 
 import pytest
-from pytz import timezone, utc
+from pytz import timezone
 
-from ical2orgpy import org_datetime, org_date, get_datetime
+from ical2orgpy import org_datetime, org_date
 
 # Timezone in Prague
 PRAGUE = timezone("Europe/Prague")
@@ -37,30 +37,3 @@ def test_org_datetime(dt, tz, expected):
 def test_org_date(dt, tz, expected):
     res = org_date(dt, tz)
     assert res == expected
-
-
-@pytest.mark.parametrize(
-    "dt, tz, expected", [
-        (datetime(2017, 12, 15, 17, 35, 0, 0, UTC), PRAGUE,
-         datetime(2017, 12, 15, 17, 35, 0, 0, UTC)),
-        (datetime(2017, 12, 15, 18, 35, 0, 0, PRAGUE), PRAGUE,
-         datetime(2017, 12, 15, 18, 35, 0, 0, PRAGUE)),
-        (datetime(2017, 12, 15, 17, 35, 0, 0), PRAGUE,
-         datetime(2017, 12, 15, 17, 35, 0, 0, PRAGUE)),
-        (date(2017, 12, 15), PRAGUE,
-         datetime(2017, 12, 15, 1, 0, 0, 0, PRAGUE)),
-    ],
-    ids=lambda itm: str(itm))
-def test_get_datetime_datetime(dt, tz, expected):
-    """test conversion of a datetime or naive date into time-aware datetime.
-
-    Unfortunately, timezones are a bit messy and one can encounter
-    e.g. 2 minutes difference between two datetimes, which look exactly
-    the same, but you may learn about PMT timezone returned for Europe/Paris.
-    """
-    res = get_datetime(dt, tz)
-    assert isinstance(res, datetime)
-    assert hasattr(res, "tzinfo")
-    delta = (res - expected).total_seconds()
-    # tolerate 5 minutes difference (yes, it happens)
-    assert abs(delta) < 5 * 60
