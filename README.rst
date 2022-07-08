@@ -15,7 +15,7 @@ org-document.
 Installation
 ============
 
-The command `ical2orgpy` is provided by means of python package `ical2orgpy`.
+The command ``ical2orgpy`` is provided by means of python package ``ical2orgpy``.
 
 Use `pip` (recommended to install into virtualenv)::
 
@@ -43,36 +43,34 @@ Alternatively, you can use the `pipsi` package, by just doing::
 
 Usage
 =====
-Simply use the `ical2orgpy` command::
+Simply use the ``ical2orgpy`` command::
 
     $ ical2orgpy --help
 
 or, if installed locally from the git repo::
 
-    $ ~/.local/bin/ical2orgpy
+    $ ~/.local/bin/ical2orgpy --help
 
-.. highlight:: bash
-				   
 The script requires two files, the input ics and the output org
-document. Usually, `ical2orgpy` is called within a script that grabs the
+document. Usually, ``ical2orgpy`` is called within a script that grabs the
 ical file from some source (i.e. Google Calendar), and generates the
 appropriate org document. Such an script would have the following shape::
 
-               #!/bin/bash
-               
-               # customize these
-               WGET=<path to wget>
-               ICS2ORG=<path to ical2org>
-               ICSFILE=$(mktemp)
-               ORGFILE=<path to orgfile>
-               URL=<url to your private Google calendar>
-               
-               # no customization needed below
-    
-               $WGET -O $ICSFILE $URL
-               $ICS2ORG $ICSFILE $ORGFILE
-               rm -f $ICSFILE
-  
+    #!/bin/bash
+
+    # customize these
+    WGET=<path to wget>
+    ICS2ORG=<path to ical2org>
+    ICSFILE=$(mktemp)
+    ORGFILE=<path to orgfile>
+    URL=<url to your private Google calendar>
+
+    # no customization needed below
+
+    $WGET -O $ICSFILE $URL
+    $ICS2ORG $ICSFILE $ORGFILE
+    rm -f $ICSFILE
+
 See further instructions here:
 
 http://orgmode.org/worg/org-tutorials/org-google-sync.html
@@ -81,7 +79,7 @@ Development
 ===========
 Clone the repository and cd into it.
 
-Assuming you have Python 2.7 and `tox` package installed::
+Assuming you have Python 2.7 and ``tox`` package installed::
 
     $ tox -e py27
 
