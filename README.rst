@@ -17,9 +17,12 @@ Installation
 
 The command ``ical2orgpy`` is provided by means of python package ``ical2orgpy``.
 
-Use `pip` (recommended to install into virtualenv)::
+You can install with ``pip`` (preferably into its own into virtualenv)::
 
     $ pip install ical2orgpy
+
+Installation with `pipx <https://github.com/pypa/pipx>`_ is recommended because
+this will manage the virtualenv for you.
 
 
 Installing from source code
@@ -34,11 +37,6 @@ To use the script, just call::
 
   $ ~/.local/bin/ical2orgpy
 
-Alternatively, you can use the `pipsi` package, by just doing::
-
-  $ curl https://raw.githubusercontent.com/mitsuhiko/pipsi/master/get-pipsi.py | python
-  $ cd <to project folder>
-  $ pipsi install .
 
 
 Usage
