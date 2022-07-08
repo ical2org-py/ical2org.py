@@ -3,3 +3,4 @@ future
 icalendar
 pytz
 tzlocal
+recurring-ical-events

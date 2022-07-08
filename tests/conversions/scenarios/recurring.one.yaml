@@ -1,0 +1,8 @@
+description: One Event recurring 3 times a week, other yearly events
+context:
+    ctime: 2018-12-15T20:35:51
+    is_dst: true
+    tzone: Europe/Prague
+parameters:
+    tzone: Europe/Prague
+    days: 8
