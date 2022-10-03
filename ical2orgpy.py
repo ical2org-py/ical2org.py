@@ -2,13 +2,15 @@ from __future__ import print_function
 
 import sys
 import traceback
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 
 import click
 import recurring_ical_events
 from icalendar import Calendar
 from pytz import all_timezones, timezone, utc
 from tzlocal import get_localzone
+
+MIDNIGHT = time(0, 0, 0)
 
 
 def org_datetime(dt, tz):
@@ -123,6 +125,13 @@ class Convertor():
             duration = comp["DURATION"].dt
             if ev_start is not None:
                 ev_end = ev_start + duration
+
+        # Special case for some calendars that include times at midnight for
+        # whole day events
+        if isinstance(ev_start, datetime) and isinstance(ev_end, datetime):
+            if ev_start.time() == MIDNIGHT and ev_end.time() == MIDNIGHT:
+                ev_start = ev_start.date()
+                ev_end = ev_end.date()
 
         # Format date/time appropriately
         if isinstance(ev_start, datetime):

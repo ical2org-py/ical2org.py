@@ -1,0 +1,21 @@
+* Weekly day off :RECURRING:
+  <2022-09-06 Tue>
+
+* Weekly day off :RECURRING:
+  <2022-09-13 Tue>
+
+* Weekly day off :RECURRING:
+  <2022-09-20 Tue>
+
+* Holiday
+  <2022-09-16 Fri>
+
+* A whole day event without a time
+  <2022-09-14 Wed>
+
+* A two day event without a time
+  <2022-09-18 Sun>--<2022-09-19 Mon>
+
+* A two day event with time at midnight
+  <2022-09-22 Thu>--<2022-09-23 Fri>
+

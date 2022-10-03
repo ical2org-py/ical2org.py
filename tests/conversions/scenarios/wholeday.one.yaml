@@ -1,0 +1,8 @@
+description: Tests for whole day events
+context:
+    ctime: 2022-09-10T20:35:51
+    is_dst: true
+    tzone: Europe/London
+parameters:
+    tzone: Europe/London
+    days: 12
