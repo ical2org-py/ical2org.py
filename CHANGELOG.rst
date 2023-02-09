@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.5
+---
+* Fixed bug with whole day events with times at midnight
+
 0.4
 ---
 * Rewrote a lot of functionality using recurring-ical-events package
