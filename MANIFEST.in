@@ -1,0 +1,9 @@
+include *.py
+include *.rst
+include *.sh
+include *.txt
+include tox.ini
+recursive-include tests *.ics
+recursive-include tests *.org
+recursive-include tests *.py
+recursive-include tests *.yaml

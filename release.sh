@@ -5,7 +5,7 @@
 set -x
 
 pytest || exit 1
-
+check-manifest || exit 1
 
 umask 000
 rm -rf build dist
@@ -15,6 +15,5 @@ export SKIP_WRITE_GIT_CHANGELOG=1
 python3 setup.py sdist || exit 1
 python3 setup.py bdist_wheel --python-tag=py3 || exit 1
 
-# Need to add `--version` tag
-# VERSION=$(./setup.py --version) || exit 1
-# twine upload dist/fluent_compiler-$VERSION.tar.gz dist/fluent_compiler-$VERSION-py3-none-any.whl || exit 1
+VERSION=$(python3 setup.py --version) || exit 1
+twine upload dist/ical2orgpy-$VERSION-py3-none-any.whl dist/ical2orgpy-$VERSION.tar.gz || exit 1

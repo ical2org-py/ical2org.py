@@ -1,6 +1,0 @@
-click
-future
-icalendar
-pytz
-tzlocal
-recurring-ical-events>=2.0.1

@@ -12,6 +12,7 @@ from tzlocal import get_localzone
 
 MIDNIGHT = time(0, 0, 0)
 
+__version__ = "0.5"
 
 def org_datetime(dt, tz):
     '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
@@ -214,6 +215,7 @@ def print_timezones(ctx, param, value):
 )
 @click.argument("ics_file", type=click.File("r", encoding="utf-8"))
 @click.argument("org_file", type=click.File("w", encoding="utf-8"))
+@click.version_option(__version__)
 def main(ics_file, org_file, email, days, timezone, include_location, continue_on_error):
     """Convert ICAL format into org-mode.
 
