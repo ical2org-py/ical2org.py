@@ -75,15 +75,25 @@ http://orgmode.org/worg/org-tutorials/org-google-sync.html
 
 Development
 ===========
+
 Clone the repository and cd into it.
 
-Assuming you have Python 2.7 and ``tox`` package installed::
+Create a virtualenv and install dependencies::
 
-    $ tox -e py27
+    $ pip install .
+    $ pip install -r test_requirements.txt
+
+Run tests to check everything is working::
+
+    $ pytest
+
+You can also use tox to create the virtualenv e.g.::
+
+    $ tox -e py39
 
 Then activate the virtualenv::
 
-    $ source .tox/py27/bin/activate
-    (py27)$
+    $ source .tox/py39/bin/activate
+    (py39)$
 
-And use here the package.
+And use the package.

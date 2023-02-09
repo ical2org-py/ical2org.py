@@ -4,11 +4,12 @@ How to test
 
 tox: run complete test suite
 ============================
-Have proper python (currently 2.7, later some 3.x) installed and have `tox` installed too::
 
-    $ tox -e py27
+Have proper Python 3 installed and have ``tox`` installed too::
 
-will create virtualenv for python 2.7, install into it this package, additional packages from
+    $ tox -e py39
+
+This will create a virtualenv for Python 3.9, install into it this package, additional packages from
 test_requirements.txt and run complete test suite.
 
 pytest: testing framework
@@ -30,13 +31,13 @@ To select particular test, use e.g.::
 
 (see pytest_ for more methods to select only specific tests, e.g. using `-k` filter).
 
-To debug test, use `--pdb`, e.g.::
+To debug test, use ``--pdb``, e.g.::
 
     $ pytest -sv tests/test_datetime.py --pdb
 
-Hint: if you install `pdbpp` python package, the debugging will be more comfortable with
+Hint: if you install ``pdbpp`` python package, the debugging will be more comfortable with
 tab-completion (at least on Linux).
-    
+
 Extending parametrized tests
 ============================
 E.g. in tests/test_datetime.py there are parametrized test, e.g.::
