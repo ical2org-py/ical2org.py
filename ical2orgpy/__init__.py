@@ -28,6 +28,21 @@ def org_date(dt, tz):
     return dt.strftime("<%Y-%m-%d %a>")
 
 
+def sameday(dt_start, dt_end, tz):
+    '''Timezone aware check whether start and end are on the same day.
+    '''
+    return dt_start.astimezone(tz).strftime("%Y-%m-%d %a") == dt_end.astimezone(tz).strftime("%Y-%m-%d %a")
+
+
+def org_timespan(dt_start, dt_end, tz):
+    '''Timezone aware datetime pair to YYYY-MM-DD DayofWeek HH:MM-HH:MM str in localtime.
+    '''
+    return("<{}-{}>".format(
+        dt_start.astimezone(tz).strftime("%Y-%m-%d %a %H:%M"),
+        dt_end.astimezone(tz).strftime("%H:%M")
+    ))
+
+
 def event_is_declined(comp, emails):
     attendee_list = comp.get('ATTENDEE', None)
     if attendee_list:
@@ -136,10 +151,14 @@ class Convertor():
 
         # Format date/time appropriately
         if isinstance(ev_start, datetime):
-            # Normal event with start and end
-            output.append("  {}--{}\n".format(
-                org_datetime(ev_start, self.tz), org_datetime(ev_end, self.tz)
-                ))
+            # Event with start and end on the same day
+            if  sameday(ev_start, ev_end, self.tz):
+                output.append("  {}\n".format(org_timespan(ev_start, ev_end, self.tz)))
+            # Event with start and end on different days
+            else:
+                output.append("  {}--{}\n".format(
+                    org_datetime(ev_start, self.tz), org_datetime(ev_end, self.tz)
+                    ))
         elif isinstance(ev_start, date):
             if ev_start == ev_end - timedelta(days=1):
                 # single day event
