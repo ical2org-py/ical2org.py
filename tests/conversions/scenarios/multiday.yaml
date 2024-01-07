@@ -1,0 +1,8 @@
+description: Two events, with start and end time on the same day, or not.
+context:
+    ctime: 2024-01-07T12:39:00
+    is_dst: true
+    tzone: Europe/Amsterdam
+parameters:
+    tzone: Europe/Amsterdam
+    days: 90
